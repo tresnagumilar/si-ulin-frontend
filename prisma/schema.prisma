@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  kelas     String
+  jurusan   String
+  dob       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  examAttempts ExamAttempt[]
+}
+
+model Exam {
+  id          String   @id @default(cuid())
+  title       String
+  subject     String
+  durationMin Int
+  totalQuestions Int
+  startTime   DateTime? // Optional global start time
+  isLive      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions   Question[]
+  attempts    ExamAttempt[]
+}
+
+model Question {
+  id      String @id @default(cuid())
+  examId  String
+  content String
+  optionA String
+  optionB String
+  optionC String
+  optionD String
+  optionE String?
+  answer  String // "A", "B", "C", "D", "E"
+  
+  exam    Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+}
+
+model ExamAttempt {
+  id         String   @id @default(cuid())
+  userId     String
+  examId     String
+  startedAt  DateTime @default(now())
+  finishedAt DateTime?
+  score      Float?
+  answers    String? // JSON string to store chosen answers
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, examId])
+}
