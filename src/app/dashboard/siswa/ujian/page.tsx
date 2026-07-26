@@ -1,31 +1,25 @@
 import { BookOpen, CheckCircle2, Clock, Search, Filter } from 'lucide-react';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
-import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
+import { authOptions } from '../../../api/auth/[...nextauth]/route';
 
 export default async function UjianSayaPage() {
-  const session = await getServerSession();
-  if (!session || !session.user?.email) redirect('/');
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) redirect('/');
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { examAttempts: true }
+  const res = await fetch('http://127.0.0.1:8000/api/student/exams', {
+    headers: {
+      'Authorization': `Bearer ${session.user.token}`
+    },
+    cache: 'no-store'
   });
 
-  if (!user) redirect('/onboarding');
-
-  const attemptedIds = user.examAttempts.map(a => a.examId);
+  if (!res.ok) redirect('/onboarding');
   
-  const allExams = await prisma.exam.findMany({
-    where: { id: { notIn: attemptedIds } },
-    orderBy: { startTime: 'asc' }
-  });
-
-  const liveExams = allExams.filter(e => e.isLive);
-  
-  const now = new Date();
-  const upcomingExams = allExams.filter(e => !e.isLive && e.startTime && e.startTime > now);
+  const data = await res.json();
+  const liveExams: any[] = data.liveExams || [];
+  const upcomingExams: any[] = data.upcomingExams || [];
 
   return (
     <div className="flex flex-col w-full h-full p-4 md:p-8 max-w-5xl mx-auto">
@@ -72,7 +66,11 @@ export default async function UjianSayaPage() {
                 <div key={exam.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-3">
                     <span className="text-xs font-bold text-primary-blue bg-blue-50 px-2 py-1 rounded-md uppercase">{exam.subject}</span>
-                    <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-full animate-pulse border border-red-100">LIVE</span>
+                    {exam.isRemedial ? (
+                      <span className="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-200">REMEDIAL</span>
+                    ) : (
+                      <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-full animate-pulse border border-red-100">LIVE</span>
+                    )}
                   </div>
                   <h3 className="font-bold text-gray-900 mb-2">{exam.title}</h3>
                   <div className="flex items-center text-sm text-gray-500 mb-6 gap-2">
@@ -105,7 +103,7 @@ export default async function UjianSayaPage() {
                   <div className="flex justify-between items-start mb-3">
                     <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md uppercase">{exam.subject}</span>
                     <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                      {exam.startTime?.toLocaleString()}
+                      {exam.startTime ? new Date(exam.startTime).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' }) : '-'}
                     </span>
                   </div>
                   <h3 className="font-bold text-gray-900 mb-2">{exam.title}</h3>

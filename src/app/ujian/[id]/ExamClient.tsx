@@ -1,8 +1,9 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, Flag, ShieldAlert, Check, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ArrowLeft, ArrowRight, Flag, ShieldAlert, Check, AlertTriangle, Play, Maximize } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useExamStore } from '@/store/examStore';
+import { getImageUrl } from '@/lib/image';
 
 interface Question {
   id: string;
@@ -12,57 +13,151 @@ interface Question {
   optionC: string;
   optionD: string;
   optionE?: string | null;
+  imageUrl?: string | null;
 }
 
 interface ExamClientProps {
-  exam: { id: string; title: string; durationMin: number };
+  exam: { id: string; title: string; durationMin: number; requiresToken?: boolean };
   questions: Question[];
+  token: string;
 }
 
-export default function ExamClient({ exam, questions }: ExamClientProps) {
+export default function ExamClient({ exam, questions, token }: ExamClientProps) {
   const router = useRouter();
   
   // Zustand Store
-  const { examId, serverEndTime, answers, startExam, setAnswer, finishExam, resetExam } = useExamStore();
+  const { examId, attemptId, serverEndTime, answers, startExam, setAnswer, finishExam, resetExam } = useExamStore();
 
   // Local State
   const [currentIdx, setCurrentIdx] = useState(0);
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false); // ref to avoid stale closure in event listeners
+  const [hasStarted, setHasStarted] = useState(false);
   
   // Anti-Cheat states
   const [warnings, setWarnings] = useState(0);
   const [showWarningModal, setShowWarningModal] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
   const maxWarnings = 3;
 
-  // Initialize Exam
-  useEffect(() => {
-    const initExam = async () => {
-      // If store doesn't match current exam, or hasn't started
-      if (examId !== exam.id || !serverEndTime) {
-        try {
-          const res = await fetch('/api/exam/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ examId: exam.id }),
-          });
-          if (res.ok) {
-            startExam(exam.id, exam.durationMin);
-          } else {
-            alert("Gagal memulai ujian");
-          }
-        } catch (e) {
-          console.error(e);
-        }
+  // Token state
+  const [inputToken, setInputToken] = useState('');
+  const [isVerifyingToken, setIsVerifyingToken] = useState(false);
+  const [tokenVerified, setTokenVerified] = useState(!exam.requiresToken);
+
+  const initExam = async () => {
+    try {
+      // Check if store already has a running attempt for THIS exam
+      if (examId === exam.id && serverEndTime && attemptId) {
+        setHasStarted(true);
+        return;
       }
-    };
-    initExam();
-  }, [exam.id, exam.durationMin, examId, serverEndTime, startExam]);
+      
+      const res = await fetch('http://127.0.0.1:8000/api/attempts/start', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ examId: exam.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        startExam(exam.id, data.id, exam.durationMin);
+        setHasStarted(true);
+      } else {
+        alert("Gagal memulai ujian");
+        router.push('/dashboard/siswa');
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Terjadi kesalahan jaringan");
+    }
+  };
+
+  const handleStartWithFullScreen = async () => {
+    // If exam requires token and not verified yet
+    if (exam.requiresToken && !tokenVerified) {
+      if (!inputToken) {
+        alert("Masukkan token ujian terlebih dahulu!");
+        return;
+      }
+      setIsVerifyingToken(true);
+      try {
+        const res = await fetch('http://127.0.0.1:8000/api/attempts/verify-token', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ examId: exam.id, token: inputToken }),
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          const currentUsageCount = parseInt(localStorage.getItem(`tokenUsage_${exam.id}`) || '0');
+          if (currentUsageCount >= 3) {
+            alert("Anda telah mencapai batas maksimal (3 kali) menggunakan token untuk masuk ke ujian ini.");
+            setIsVerifyingToken(false);
+            return;
+          }
+          localStorage.setItem(`tokenUsage_${exam.id}`, (currentUsageCount + 1).toString());
+          setTokenVerified(true);
+          // proceed to fullscreen and init
+        } else {
+          alert(data.error || "Token tidak valid");
+          setIsVerifyingToken(false);
+          return;
+        }
+      } catch (err) {
+        alert("Terjadi kesalahan jaringan saat verifikasi token");
+        setIsVerifyingToken(false);
+        return;
+      }
+      setIsVerifyingToken(false);
+    } else if (exam.requiresToken && tokenVerified) {
+        // Already verified in this session, but let's check if usage limit is reached (edge case)
+        const currentUsageCount = parseInt(localStorage.getItem(`tokenUsage_${exam.id}`) || '0');
+        if (currentUsageCount > 3) {
+           alert("Anda telah mencapai batas maksimal (3 kali) menggunakan token untuk masuk ke ujian ini.");
+           return;
+        }
+    }
+
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+      initExam();
+    } catch (err) {
+      alert("Gagal memasuki mode Full-Screen. Ujian membutuhkan mode Full-Screen.");
+    }
+  };
+
+  // Handle Answer Selection directly to API
+  const handleSelectAnswer = async (questionId: string, letter: string) => {
+    setAnswer(questionId, letter);
+    if (!attemptId) return;
+
+    try {
+      await fetch(`http://127.0.0.1:8000/api/attempts/${attemptId}/answer`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ questionId, answer: letter }),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Timer Effect
   useEffect(() => {
-    if (!serverEndTime) return;
+    if (!serverEndTime || !hasStarted) return;
 
     const interval = setInterval(() => {
       const now = Date.now();
@@ -76,7 +171,7 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [serverEndTime]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [serverEndTime, hasStarted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -86,19 +181,25 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
 
   // Submission
   const handleForceSubmit = useCallback(async () => {
-    if (isSubmitting) return;
+    if (isSubmittingRef.current || !attemptId) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     
     try {
-      const res = await fetch('/api/exam/submit', {
+      const res = await fetch(`http://127.0.0.1:8000/api/attempts/${attemptId}/finish`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ examId: exam.id, answers }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
       });
       
       if (res.ok) {
         finishExam();
-        router.replace('/dashboard/siswa/nilai');
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(e => console.log(e));
+        }
+        router.replace(`/ujian/${exam.id}/selesai`);
       } else {
         const err = await res.json();
         alert(err.error || "Gagal mengumpulkan ujian.");
@@ -107,12 +208,29 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
       console.error(e);
       alert("Terjadi kesalahan jaringan saat mengumpulkan ujian.");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [answers, exam.id, finishExam, isSubmitting, router]);
+  }, [attemptId, finishExam, router, token]);
 
   // --- ANTI CHEAT MODULE ---
-  const handleCheatDetected = useCallback(() => {
+  const handleCheatDetected = useCallback(async (reason: string) => {
+    if (!attemptId || !hasStarted) return;
+
+    // Log cheat to backend
+    try {
+      await fetch(`http://127.0.0.1:8000/api/attempts/${attemptId}/cheat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ description: reason })
+      });
+    } catch (e) {
+      console.error("Gagal mencatat log kecurangan", e);
+    }
+
     setWarnings(prev => {
       const newWarnings = prev + 1;
       if (newWarnings >= maxWarnings) {
@@ -122,12 +240,22 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
       }
       return newWarnings;
     });
-  }, [handleForceSubmit]);
+  }, [attemptId, hasStarted, handleForceSubmit, token]);
 
   useEffect(() => {
+    if (!hasStarted) return;
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        handleCheatDetected();
+        handleCheatDetected("Meninggalkan Tab / Pindah Aplikasi");
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      // Ignore fullscreen exit when the exam is being submitted (normal exit)
+      // Use ref to avoid stale closure capturing old isSubmitting value
+      if (!document.fullscreenElement && hasStarted && !isSubmittingRef.current) {
+        handleCheatDetected("Keluar dari Mode Fullscreen");
       }
     };
 
@@ -140,22 +268,86 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('dragstart', (e) => e.preventDefault());
 
+    // Prevent Back Navigation
+    window.history.pushState(null, "", window.location.href);
+    const preventBack = () => {
+      window.history.pushState(null, "", window.location.href);
+      handleCheatDetected("Mencoba Kembali (Back) dari Halaman Ujian");
+    };
+    window.addEventListener('popstate', preventBack);
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('dragstart', (e) => e.preventDefault());
+      window.removeEventListener('popstate', preventBack);
     };
-  }, [handleCheatDetected]);
+  }, [hasStarted, handleCheatDetected]);
 
   const preventCopyPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     alert("Tindakan menyalin/menempel tidak diizinkan selama ujian.");
   };
+
+  // Splash Screen if not started
+  if (!hasStarted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-xl border border-gray-100 text-center">
+          <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Maximize className="w-10 h-10 text-primary-blue" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{exam.title}</h2>
+          <p className="text-gray-500 mb-6">Ujian ini mewajibkan mode Full-Screen. Pastikan Anda siap dan jangan meninggalkan halaman saat ujian berlangsung.</p>
+          
+          <div className="bg-accent-yellow/20 p-4 rounded-xl mb-6 text-left border border-accent-yellow/30">
+            <h4 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2"><ShieldAlert className="w-4 h-4"/> Peraturan Ujian</h4>
+            <ul className="text-xs text-gray-600 space-y-2 list-disc pl-4">
+              <li>Dilarang keluar dari mode layar penuh (Full-Screen)</li>
+              <li>Dilarang pindah tab atau membuka aplikasi lain</li>
+              <li>Dilarang menyalin (Copy) atau menempel (Paste) teks</li>
+              <li>Maksimal peringatan pelanggaran adalah {maxWarnings} kali sebelum ujian otomatis dikumpulkan</li>
+              <li>Maksimal masuk/login menggunakan token adalah 3 kali</li>
+            </ul>
+          </div>
+          
+          {exam.requiresToken && !tokenVerified && (
+            <div className="mb-6 text-left">
+              <label className="block text-sm font-bold text-gray-700 mb-2">Token Ujian</label>
+              <input 
+                type="text" 
+                placeholder="Masukkan 6 digit token..."
+                value={inputToken}
+                onChange={e => setInputToken(e.target.value.toUpperCase())}
+                maxLength={6}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl font-mono text-center tracking-widest text-lg font-bold text-gray-900 focus:ring-2 focus:ring-primary-blue outline-none transition-all uppercase"
+              />
+            </div>
+          )}
+
+          <button 
+            onClick={handleStartWithFullScreen}
+            disabled={isVerifyingToken || (exam.requiresToken && !tokenVerified && inputToken.length < 4)}
+            className="w-full bg-primary-blue hover:bg-primary-blue-dark text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-70 disabled:active:scale-100"
+          >
+            {isVerifyingToken ? (
+              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Play className="w-5 h-5" /> 
+            )}
+            {isVerifyingToken ? "Memverifikasi..." : "Mulai Ujian (Full-Screen)"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const currentQ = questions[currentIdx];
   if (!currentQ) return <div className="p-8 text-center">Memuat soal...</div>;
@@ -176,16 +368,59 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Peringatan Keamanan!</h3>
             <p className="text-gray-600 mb-4 text-sm">
-              Anda terdeteksi meninggalkan halaman ujian atau melakukan tindakan mencurigakan. 
+              Anda terdeteksi melakukan pelanggaran ujian (seperti meninggalkan halaman atau mode full-screen). 
               <br/><br/>
               <span className="font-bold text-red-600">Peringatan: {warnings} dari {maxWarnings}</span>
             </p>
             <button 
-              onClick={() => setShowWarningModal(false)}
+              onClick={() => {
+                setShowWarningModal(false);
+                if (document.documentElement.requestFullscreen) {
+                  document.documentElement.requestFullscreen().catch(e => console.log(e));
+                }
+              }}
               className="w-full bg-primary-blue text-white font-bold py-3 rounded-xl hover:bg-primary-blue-dark transition-colors"
             >
-              Saya Mengerti & Lanjutkan
+              Saya Mengerti & Kembali Full-Screen
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Submit Modal */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-primary-blue" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Kumpulkan Ujian?</h3>
+            <p className="text-gray-600 mb-6 text-sm">
+              Apakah Anda yakin ingin mengumpulkan ujian ini? Jawaban tidak dapat diubah setelah dikumpulkan.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowSubmitModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={async () => {
+                  setShowSubmitModal(false);
+                  await handleForceSubmit();
+                }}
+                disabled={isSubmitting}
+                className="flex-1 bg-primary-blue text-white font-bold py-3 rounded-xl hover:bg-primary-blue-dark transition-colors disabled:opacity-70"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Mengumpulkan...
+                  </span>
+                ) : 'Ya, Kumpulkan'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -194,7 +429,7 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
       <header className="bg-primary-blue-dark text-white px-4 py-3 flex items-center justify-between shrink-0 shadow-md relative z-10">
         <div className="flex-1">
           <h1 className="font-bold text-lg leading-tight">{exam.title}</h1>
-          <p className="text-[10px] text-blue-200 uppercase tracking-wider">Ujian Tengah Semester</p>
+          <p className="text-[10px] text-blue-200 uppercase tracking-wider">SMKN 9 Smart Exam</p>
         </div>
         
         <div className="flex flex-col items-center">
@@ -205,9 +440,7 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
         </div>
         
         <div className="flex-1 flex justify-end">
-          <button onClick={handleForceSubmit} className="flex items-center gap-2 bg-red-500 hover:bg-red-600 px-4 py-2 rounded-full font-bold shadow-md transition-colors">
-            Kumpulkan
-          </button>
+          {/* Top Kumpulkan button removed as requested */}
         </div>
       </header>
 
@@ -228,6 +461,13 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
               </span>
             </div>
             
+            {currentQ.imageUrl && (
+              <div className="mb-6 flex justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={getImageUrl(currentQ.imageUrl)} alt="Ilustrasi Soal" className="max-w-full max-h-64 object-contain rounded-xl border border-gray-200 shadow-sm" />
+              </div>
+            )}
+            
             <div className="text-gray-800 text-lg md:text-xl font-medium mb-8 leading-relaxed whitespace-pre-wrap">
               {currentQ.content}
             </div>
@@ -239,7 +479,7 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
                 return (
                   <button
                     key={letter}
-                    onClick={() => setAnswer(currentQ.id, letter)}
+                    onClick={() => handleSelectAnswer(currentQ.id, letter)}
                     className={`w-full flex items-center p-4 rounded-2xl border-2 transition-all ${
                       isSelected 
                         ? 'border-primary-blue bg-blue-50/50 shadow-md' 
@@ -323,9 +563,7 @@ export default function ExamClient({ exam, questions }: ExamClientProps) {
         <button 
           onClick={() => {
             if (currentIdx === questions.length - 1) {
-               if (confirm("Apakah Anda yakin ingin mengumpulkan ujian?")) {
-                 handleForceSubmit();
-               }
+               setShowSubmitModal(true);
             } else {
                setCurrentIdx(prev => Math.min(questions.length - 1, prev + 1));
             }

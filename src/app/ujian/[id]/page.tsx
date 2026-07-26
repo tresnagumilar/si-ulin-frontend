@@ -1,90 +1,33 @@
-import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import ExamClient from './ExamClient';
+import { authOptions } from '../../api/auth/[...nextauth]/route';
 
-export default async function UjianPage({ params }: { params: { id: string } }) {
-  const session = await getServerSession();
-  if (!session || !session.user?.email) {
+export default async function UjianPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const session = await getServerSession(authOptions);
+  
+  if (!session || !session.user) {
     redirect('/');
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email }
-  });
-
-  if (!user) {
-    redirect('/onboarding');
-  }
-
   // Find Exam
-  let exam = await prisma.exam.findUnique({
-    where: { id: params.id },
-    include: { questions: true }
+  const res = await fetch(`http://localhost:8000/api/exams/${resolvedParams.id}`, {
+    headers: {
+      'Authorization': `Bearer ${session.user.token}`
+    },
+    cache: 'no-store'
   });
 
-  // SEEDING DUMMY EXAM FOR TESTING PURPOSES IF NOT FOUND
-  if (!exam) {
-    if (params.id === 'matematika-uts') {
-      exam = await prisma.exam.create({
-        data: {
-          id: 'matematika-uts',
-          title: 'Ujian Tengah Semester Matematika',
-          subject: 'Matematika',
-          durationMin: 90,
-          totalQuestions: 3,
-          isLive: true,
-          questions: {
-            create: [
-              {
-                content: 'Berapakah hasil dari 2 + 2?',
-                optionA: '3',
-                optionB: '4',
-                optionC: '5',
-                optionD: '6',
-                answer: 'B'
-              },
-              {
-                content: 'Turunan pertama dari f(x) = x^2 adalah?',
-                optionA: 'x',
-                optionB: '2x',
-                optionC: 'x^2',
-                optionD: '2',
-                answer: 'B'
-              },
-              {
-                content: 'Akar kuadrat dari 144 adalah?',
-                optionA: '12',
-                optionB: '14',
-                optionC: '16',
-                optionD: '10',
-                answer: 'A'
-              }
-            ]
-          }
-        },
-        include: { questions: true }
-      });
-    } else {
-      redirect('/dashboard/siswa'); // Real exam not found
-    }
+  if (!res.ok) {
+    redirect('/dashboard/siswa');
   }
 
-  // Check if they already attempted and finished
-  const existingAttempt = await prisma.examAttempt.findUnique({
-    where: {
-      userId_examId: { userId: user.id, examId: exam.id }
-    }
-  });
-
-  if (existingAttempt?.finishedAt) {
-    // Already submitted
-    redirect('/dashboard/siswa/nilai');
-  }
+  const exam = await res.json();
 
   // Return the client component to handle interactiveness
   // We don't pass the correct `answer` to the client for security!
-  const safeQuestions = exam.questions.map(q => ({
+  const safeQuestions = exam.questions.map((q: any) => ({
     id: q.id,
     content: q.content,
     optionA: q.optionA,
@@ -92,6 +35,7 @@ export default async function UjianPage({ params }: { params: { id: string } }) 
     optionC: q.optionC,
     optionD: q.optionD,
     optionE: q.optionE,
+    imageUrl: q.imageUrl,
   }));
 
   return (
@@ -100,8 +44,10 @@ export default async function UjianPage({ params }: { params: { id: string } }) 
         id: exam.id,
         title: exam.title,
         durationMin: exam.durationMin,
+        requiresToken: !!exam.exam_token
       }}
       questions={safeQuestions}
+      token={session.user.token!}
     />
   );
 }

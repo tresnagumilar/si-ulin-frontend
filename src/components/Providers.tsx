@@ -1,10 +1,13 @@
 'use client';
 import { SessionProvider } from "next-auth/react";
+import HeartbeatProvider from "./HeartbeatProvider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      {children}
+      <HeartbeatProvider>
+        {children}
+      </HeartbeatProvider>
     </SessionProvider>
   );
 }

@@ -1,33 +1,106 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, Eye, EyeOff, Mail, Lock, User, Key, LayoutDashboard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [role, setRole] = useState<'siswa' | 'guru' | 'admin'>('siswa');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Show error from URL if exists
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const errorMsg = urlParams.get('error');
+      if (errorMsg) {
+        alert(errorMsg);
+        // Clear the URL to prevent showing alert again on reload
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      const user = session.user as any;
+      const needsOnboarding = user.role !== 'ADMIN' && (!user.tgl_lahir || (user.role === 'SISWA' && (!user.kelas || !user.jurusan)));
+
+      if (needsOnboarding) {
+        router.push('/onboarding');
+      } else if (!user.is_approved && user.role !== 'SISWA') {
+        router.push('/menunggu-persetujuan');
+      } else {
+        if (user.role === 'ADMIN') router.push('/admin');
+        else if (user.role === 'GURU') router.push('/guru');
+        else router.push('/dashboard/siswa');
+      }
+    }
+  }, [status, session, router]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    // Simulasi login
-    setTimeout(() => {
-      setLoading(false);
-      if (role === 'siswa') {
-        router.push('/dashboard/siswa');
-      } else {
-        router.push('/dashboard');
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    if (!isLogin) {
+      const name = formData.get('name') as string;
+      try {
+        const regRes = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role: role.toUpperCase() })
+        });
+        const regData = await regRes.json();
+        if (!regRes.ok) {
+          alert(regData.message || 'Gagal mendaftar');
+          setLoading(false);
+          return;
+        }
+        
+        // Auto sign-in after successful registration
+        const result = await signIn('credentials', {
+          redirect: false,
+          email,
+          password
+        });
+
+        if (result?.error) {
+          alert(result.error);
+          setIsLogin(true);
+        }
+      } catch (err) {
+        alert('Terjadi kesalahan saat mendaftar');
       }
-    }, 1000);
+      setLoading(false);
+      return;
+    }
+
+    const result = await signIn('credentials', {
+      redirect: false,
+      email,
+      password
+    });
+
+    if (result?.error) {
+      alert(result.error);
+      setLoading(false);
+    }
+    // If successful, the useEffect will handle the redirect based on session update
   };
 
   return (
     <div className="min-h-screen bg-primary-blue flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Grid Background Pattern */}
-      <div 
+      <div
         className="absolute inset-0 opacity-20"
         style={{
           backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px)`,
@@ -35,7 +108,7 @@ export default function LoginPage() {
           backgroundPosition: 'center center'
         }}
       />
-      
+
       {/* Animated subtle glows */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-blue-light rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent-yellow rounded-full mix-blend-screen filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: '2s' }} />
@@ -54,8 +127,8 @@ export default function LoginPage() {
         {/* Login Card */}
         <div className="glass-card w-full rounded-[2rem] p-8 shadow-2xl relative">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-1">Selamat Datang 👋</h2>
-            <p className="text-gray-500 text-sm">Masuk untuk melanjutkan</p>
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">{isLogin ? 'Selamat Datang 👋' : 'Buat Akun Baru ✨'}</h2>
+            <p className="text-gray-500 text-sm">{isLogin ? 'Masuk untuk melanjutkan' : 'Daftar untuk mulai menggunakan aplikasi'}</p>
           </div>
 
           {/* Role Tabs */}
@@ -65,28 +138,44 @@ export default function LoginPage() {
                 key={r}
                 type="button"
                 onClick={() => setRole(r)}
-                className={`flex-1 py-2.5 px-4 rounded-full text-sm font-semibold transition-all duration-300 ${
-                  role === r
+                className={`flex-1 py-2.5 px-4 rounded-full text-sm font-semibold transition-all duration-300 ${role === r
                     ? 'bg-accent-yellow text-primary-blue-dark shadow-md transform scale-[1.02]'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
-                }`}
+                  }`}
               >
                 {r.charAt(0).toUpperCase() + r.slice(1)}
               </button>
             ))}
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-5">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {!isLogin && (
+              <div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400 group-focus-within:text-primary-blue transition-colors" />
+                  </div>
+                  <input
+                    name="name"
+                    type="text"
+                    className="block w-full pl-11 pr-4 py-3.5 border-0 bg-gray-50/50 rounded-2xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary-blue transition-all"
+                    placeholder="Nama Lengkap"
+                    required={!isLogin}
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   {role === 'siswa' ? <User className="h-5 w-5 text-gray-400 group-focus-within:text-primary-blue transition-colors" /> : <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-primary-blue transition-colors" />}
                 </div>
                 <input
-                  type={role === 'siswa' ? 'text' : 'email'}
+                  name="email"
+                  type="text"
                   className="block w-full pl-11 pr-4 py-3.5 border-0 bg-gray-50/50 rounded-2xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary-blue transition-all"
-                  placeholder={role === 'siswa' ? "Email atau NIS" : role === 'guru' ? "Email atau NUPTK" : "Email Admin"}
+                  placeholder={role === 'siswa' ? "Email atau NIS/NISN" : role === 'guru' ? "Email atau NUPTK" : "Email Admin"}
                   required
                 />
               </div>
@@ -98,6 +187,7 @@ export default function LoginPage() {
                   <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-primary-blue transition-colors" />
                 </div>
                 <input
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
                   className="block w-full pl-11 pr-12 py-3.5 border-0 bg-gray-50/50 rounded-2xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary-blue transition-all"
                   placeholder="Password"
@@ -125,19 +215,22 @@ export default function LoginPage() {
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
               ) : (
-                <>Masuk Sekarang <span className="ml-2">→</span></>
+                <>{isLogin ? 'Masuk Sekarang' : 'Daftar Sekarang'} <span className="ml-2">→</span></>
               )}
             </button>
           </form>
 
           <div className="mt-8 text-center text-sm">
-            <span className="text-gray-400 bg-white px-2">atau masuk dengan</span>
+            <span className="text-gray-400 bg-white px-2">atau gunakan</span>
           </div>
 
           <div className="mt-6">
             <button
               type="button"
-              onClick={() => signIn("google", { callbackUrl: "/dashboard/siswa" })}
+              onClick={() => {
+                document.cookie = `selectedRole=${role.toUpperCase()}; path=/`;
+                signIn("google", { callbackUrl: "/" });
+              }}
               className="w-full flex justify-center items-center py-3.5 px-4 border-2 border-gray-100 rounded-2xl bg-white/50 hover:bg-white text-sm font-semibold text-gray-700 transition-all hover:shadow-md"
             >
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -162,10 +255,23 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="mt-6 text-center">
-            <a href="#" className="text-sm text-gray-500 hover:text-primary-blue transition-colors">
-              Lupa Password?
-            </a>
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-sm text-primary-blue hover:text-primary-blue-light font-medium transition-colors"
+            >
+              {isLogin ? 'Belum punya akun? Daftar sekarang' : 'Sudah punya akun? Masuk di sini'}
+            </button>
+            {isLogin && (
+              <button 
+                type="button" 
+                onClick={() => setShowForgotModal(true)}
+                className="text-sm text-gray-500 hover:text-primary-blue transition-colors"
+              >
+                Lupa Password?
+              </button>
+            )}
           </div>
         </div>
 
@@ -183,6 +289,29 @@ export default function LoginPage() {
           SMKN 9 Smart Exam v2.4.1 - 2025
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-in-center">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+                <Lock className="w-8 h-8 text-primary-blue" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Lupa Password?</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Untuk alasan keamanan, fitur ubah password mandiri saat ini dinonaktifkan. Silakan hubungi <strong>Administrator Sekolah</strong> atau <strong>Wali Kelas</strong> untuk mereset password Anda.
+              </p>
+              <button
+                onClick={() => setShowForgotModal(false)}
+                className="w-full mt-4 py-3 bg-primary-blue hover:bg-primary-blue-dark text-white rounded-xl font-semibold transition-all"
+              >
+                Saya Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

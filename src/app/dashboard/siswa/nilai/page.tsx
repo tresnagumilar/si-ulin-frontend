@@ -1,27 +1,25 @@
 import { FileText, Download, TrendingUp, Award, BarChart3 } from 'lucide-react';
 import { getServerSession } from 'next-auth';
-import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
+import { authOptions } from '../../../api/auth/[...nextauth]/route';
+import ChatButton from './ChatButton';
 
 export default async function LaporanNilaiPage() {
-  const session = await getServerSession();
-  if (!session || !session.user?.email) redirect('/');
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) redirect('/');
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: {
-      examAttempts: {
-        where: { finishedAt: { not: null } },
-        include: { exam: true },
-        orderBy: { finishedAt: 'desc' }
-      }
-    }
+  const res = await fetch('http://127.0.0.1:8000/api/student/dashboard', {
+    headers: {
+      'Authorization': `Bearer ${session.user.token}`
+    },
+    cache: 'no-store'
   });
 
-  if (!user) redirect('/onboarding');
-
-  const attempts = user.examAttempts;
+  if (!res.ok) redirect('/onboarding');
+  
+  const data = await res.json();
+  // attempts from api are ordered asc, let's reverse them for this view
+  const attempts: any[] = data.attempts ? [...data.attempts].reverse() : [];
   const totalExams = attempts.length;
   
   let averageScore = 0;
@@ -75,8 +73,12 @@ export default async function LaporanNilaiPage() {
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-          <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-3">
-            <BarChart3 className="w-5 h-5" />
+          <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-3 relative">
+            <svg className="absolute w-full h-full -rotate-90 transform">
+              <circle cx="20" cy="20" r="18" fill="none" className="stroke-purple-200" strokeWidth="3" />
+              <circle cx="20" cy="20" r="18" fill="none" className="stroke-purple-600" strokeWidth="3" strokeDasharray={`${(passRate / 100) * 113} 113`} strokeLinecap="round" />
+            </svg>
+            <BarChart3 className="w-5 h-5 z-10" />
           </div>
           <p className="text-2xl font-bold text-gray-900 mb-1">{passRate.toFixed(0)}%</p>
           <p className="text-xs text-gray-500 font-medium">Tingkat Kelulusan</p>
@@ -99,20 +101,21 @@ export default async function LaporanNilaiPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {attempts.map(attempt => {
+            {attempts.map((attempt, idx) => {
               const isPassed = (attempt.score || 0) >= 70;
               return (
-                <div key={attempt.id} className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-gray-50/50 transition-colors">
+                <div key={attempt.id} className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-gray-50/80 transition-all duration-300 transform hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${idx * 100}ms` }}>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 uppercase">{attempt.exam.subject}</span>
                       <span className="text-xs text-gray-400">
-                        {attempt.finishedAt?.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {attempt.finishedAt ? new Date(attempt.finishedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                       </span>
                     </div>
                     <h3 className="font-bold text-gray-900">{attempt.exam.title}</h3>
                   </div>
-                  <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                  <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end mt-4 sm:mt-0">
+                    <ChatButton attemptId={attempt.id} examTitle={attempt.exam.title} />
                     <div className="text-right">
                       <p className={`text-2xl font-bold ${isPassed ? 'text-primary-blue-dark' : 'text-red-500'}`}>
                         {attempt.score}

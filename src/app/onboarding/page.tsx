@@ -1,141 +1,193 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Book, GraduationCap, Calendar, CheckCircle } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { Shield, User, GraduationCap, Calendar, Save } from 'lucide-react';
 
 export default function OnboardingPage() {
+  const { data: session, update } = useSession();
   const router = useRouter();
+  const role = (session?.user as any)?.role || 'SISWA';
+  const [nama, setNama] = useState('');
+  const [tingkat, setTingkat] = useState('');
+  const [jurusan, setJurusan] = useState('');
+  const [subKelas, setSubKelas] = useState('');
+  const [tglLahir, setTglLahir] = useState('');
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    kelas: '10',
-    jurusan: 'IPA',
-    dob: ''
-  });
+
+  useEffect(() => {
+    // If user has no session, push to login
+    if (session === null) {
+      router.push('/');
+    } else if (session?.user?.name && !nama) {
+      setNama(session.user.name);
+    }
+  }, [session, router, nama]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!session?.user?.token) return;
+
     setLoading(true);
-    
+
     try {
-      const res = await fetch('/api/onboarding', {
+      const res = await fetch('http://localhost:8000/api/onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.user.token}`
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: nama,
+          role,
+          kelas: role === 'SISWA' ? `${tingkat} ${jurusan} ${subKelas}` : undefined,
+          jurusan: role === 'SISWA' ? jurusan : undefined,
+          tgl_lahir: tglLahir
+        })
       });
 
+      const data = await res.json();
       if (res.ok) {
-        router.push('/dashboard/siswa');
+        // Update session token data
+        await update({
+          name: data.user.name,
+          role: data.user.role,
+          is_approved: data.user.is_approved,
+          kelas: data.user.kelas,
+          jurusan: data.user.jurusan,
+          tgl_lahir: data.user.tgl_lahir
+        });
+
+        // After updating session, redirect appropriately
+        if (!data.user.is_approved && data.user.role !== 'SISWA') {
+          router.push('/menunggu-persetujuan');
+        } else {
+          router.push(data.user.role === 'GURU' ? '/guru' : '/dashboard/siswa');
+        }
       } else {
-        alert('Gagal menyimpan data.');
+        alert(data.message || 'Terjadi kesalahan saat menyimpan data.');
       }
     } catch (error) {
       console.error(error);
-      alert('Terjadi kesalahan.');
+      alert('Gagal terhubung ke server.');
     } finally {
       setLoading(false);
     }
   };
 
+  if (!session) return null;
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-[2rem] shadow-xl p-8 border border-gray-100">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
-            <CheckCircle className="w-8 h-8 text-primary-blue" />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-[2rem] shadow-xl overflow-hidden border border-gray-100">
+        <div className="bg-primary-blue p-8 flex flex-col items-center relative overflow-hidden text-white">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full mix-blend-screen filter blur-xl transform translate-x-10 -translate-y-10" />
+          <div className="relative z-10 w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30 mb-4">
+            <Shield className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Lengkapi Data Diri</h1>
-          <p className="text-sm text-gray-500">Silakan isi data Anda untuk melanjutkan ke dashboard.</p>
+          <h1 className="text-2xl font-bold relative z-10">Lengkapi Profil</h1>
+          <p className="text-blue-100 text-sm mt-1 relative z-10">Mohon lengkapi data diri Anda</p>
         </div>
+        
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nama Lengkap</label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <User className="h-5 w-5 text-gray-400 group-focus-within:text-primary-blue transition-colors" />
-              </div>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="block w-full pl-11 pr-4 py-3.5 border border-gray-200 bg-gray-50 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
-                placeholder="Misal: Budi Santoso"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Kelas</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <GraduationCap className="h-5 w-5 text-gray-400 group-focus-within:text-primary-blue transition-colors" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Lengkap</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <User className="h-4 w-4 text-gray-400" />
                 </div>
-                <select
+                <input
+                  type="text"
                   required
-                  value={formData.kelas}
-                  onChange={(e) => setFormData({...formData, kelas: e.target.value})}
-                  className="block w-full pl-10 pr-4 py-3.5 border border-gray-200 bg-gray-50 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all appearance-none"
-                >
-                  <option value="10">Kelas 10</option>
-                  <option value="11">Kelas 11</option>
-                  <option value="12">Kelas 12</option>
-                </select>
+                  value={nama}
+                  onChange={e => setNama(e.target.value)}
+                  placeholder="Masukkan nama lengkap"
+                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-blue transition-all outline-none"
+                />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Jurusan</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Book className="h-5 w-5 text-gray-400 group-focus-within:text-primary-blue transition-colors" />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Tanggal Lahir</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Calendar className="h-4 w-4 text-gray-400" />
                 </div>
-                <select
+                <input
+                  type="date"
                   required
-                  value={formData.jurusan}
-                  onChange={(e) => setFormData({...formData, jurusan: e.target.value})}
-                  className="block w-full pl-10 pr-4 py-3.5 border border-gray-200 bg-gray-50 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all appearance-none"
-                >
-                  <option value="IPA">IPA</option>
-                  <option value="IPS">IPS</option>
-                  <option value="BAHASA">Bahasa</option>
-                  <option value="TKJ">TKJ</option>
-                  <option value="RPL">RPL</option>
-                  <option value="MM">Multimedia</option>
-                </select>
+                  value={tglLahir}
+                  onChange={e => setTglLahir(e.target.value)}
+                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-blue transition-all outline-none"
+                />
               </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tanggal Lahir</label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Calendar className="h-5 w-5 text-gray-400 group-focus-within:text-primary-blue transition-colors" />
+            {role === 'SISWA' && (
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Tingkat</label>
+                  <select
+                    required
+                    value={tingkat}
+                    onChange={e => setTingkat(e.target.value)}
+                    className="block w-full px-4 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-blue transition-all outline-none"
+                  >
+                    <option value="">Tingkat</option>
+                    <option value="X">X</option>
+                    <option value="XI">XI</option>
+                    <option value="XII">XII</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Jurusan</label>
+                  <select
+                    required
+                    value={jurusan}
+                    onChange={e => setJurusan(e.target.value)}
+                    className="block w-full px-4 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-blue transition-all outline-none"
+                  >
+                    <option value="">Jurusan</option>
+                    <option value="IPA">IPA</option>
+                    <option value="IPS">IPS</option>
+                    <option value="TKJ">TKJ</option>
+                    <option value="RPL">RPL</option>
+                    <option value="AKL">AKL</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Grup</label>
+                  <select
+                    required
+                    value={subKelas}
+                    onChange={e => setSubKelas(e.target.value)}
+                    className="block w-full px-4 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-blue transition-all outline-none"
+                  >
+                    <option value="">Grup</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                    <option value="E">E</option>
+                  </select>
+                </div>
               </div>
-              <input
-                type="date"
-                required
-                value={formData.dob}
-                onChange={(e) => setFormData({...formData, dob: e.target.value})}
-                className="block w-full pl-11 pr-4 py-3.5 border border-gray-200 bg-gray-50 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
-              />
-            </div>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg shadow-primary-blue/20 text-sm font-bold text-white bg-primary-blue hover:bg-primary-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition-all active:scale-95 disabled:opacity-70 disabled:active:scale-100 mt-8"
+            disabled={loading || (role === 'SISWA' && (!tingkat || !jurusan || !subKelas)) || !tglLahir}
+            className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-primary-blue hover:bg-primary-blue-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed items-center gap-2"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
             ) : (
-              'Simpan & Lanjutkan'
+              <>
+                <Save className="w-4 h-4" /> Simpan & Lanjutkan
+              </>
             )}
           </button>
         </form>
