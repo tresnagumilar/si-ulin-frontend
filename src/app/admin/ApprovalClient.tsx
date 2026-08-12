@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Check, X, ShieldAlert } from 'lucide-react';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 type PendingUser = {
   id: string;
@@ -16,6 +18,22 @@ export default function ApprovalClient() {
   const { data: session } = useSession();
   const [users, setUsers] = useState<PendingUser[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Custom Alert & Confirm Modals
+  const [alertData, setAlertData] = useState<{ isOpen: boolean; title?: string; message: string; type?: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false, message: ''
+  });
+  const [confirmData, setConfirmData] = useState<{ isOpen: boolean; title?: string; message: string; onConfirm: () => void; isDanger?: boolean }>({
+    isOpen: false, message: '', onConfirm: () => {}, isDanger: false
+  });
+
+  const showAlert = (message: string, title = 'Pemberitahuan', type: 'error' | 'warning' | 'info' | 'success' = 'warning') => {
+    setAlertData({ isOpen: true, title, message, type });
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void, title = 'Konfirmasi', isDanger = false) => {
+    setConfirmData({ isOpen: true, title, message, onConfirm, isDanger });
+  };
 
   useEffect(() => {
     if (session?.user?.token) {
@@ -41,34 +59,46 @@ export default function ApprovalClient() {
     }
   };
 
-  const approveUser = async (id: string) => {
-    if (!confirm('Setujui akun ini?')) return;
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/api/admin/approve-user/${id}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${session?.user?.token}` }
-      });
-      if (res.ok) {
-        setUsers(users.filter(u => u.id !== id));
+  const approveUser = (id: string) => {
+    showConfirm('Setujui dan aktifkan akun pendaftar ini?', async () => {
+      setConfirmData(prev => ({ ...prev, isOpen: false }));
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/api/admin/approve-user/${id}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${session?.user?.token}` }
+        });
+        if (res.ok) {
+          setUsers(users.filter(u => u.id !== id));
+          showAlert('Akun pendaftar berhasil disetujui.', 'Berhasil', 'success');
+        } else {
+          showAlert('Gagal menyetujui akun pendaftar.', 'Gagal', 'error');
+        }
+      } catch (error) {
+        console.error(error);
+        showAlert('Terjadi kesalahan jaringan.', 'Error', 'error');
       }
-    } catch (error) {
-      console.error(error);
-    }
+    }, 'Setujui Akun', false);
   };
 
-  const rejectUser = async (id: string) => {
-    if (!confirm('Tolak dan hapus akun ini?')) return;
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/api/admin/reject-user/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session?.user?.token}` }
-      });
-      if (res.ok) {
-        setUsers(users.filter(u => u.id !== id));
+  const rejectUser = (id: string) => {
+    showConfirm('Tolak dan hapus data pendaftaran akun ini?', async () => {
+      setConfirmData(prev => ({ ...prev, isOpen: false }));
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/api/admin/reject-user/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${session?.user?.token}` }
+        });
+        if (res.ok) {
+          setUsers(users.filter(u => u.id !== id));
+          showAlert('Akun pendaftar berhasil ditolak.', 'Berhasil', 'success');
+        } else {
+          showAlert('Gagal menolak akun pendaftar.', 'Gagal', 'error');
+        }
+      } catch (error) {
+        console.error(error);
+        showAlert('Terjadi kesalahan jaringan.', 'Error', 'error');
       }
-    } catch (error) {
-      console.error(error);
-    }
+    }, 'Tolak Akun', true);
   };
 
   if (loading) return <div className="text-gray-500">Memuat data pendaftar...</div>;
@@ -129,6 +159,23 @@ export default function ApprovalClient() {
           </table>
         </div>
       )}
+
+      <AlertModal 
+        isOpen={alertData.isOpen}
+        title={alertData.title}
+        message={alertData.message}
+        type={alertData.type}
+        onClose={() => setAlertData({ ...alertData, isOpen: false })}
+      />
+
+      <ConfirmModal
+        isOpen={confirmData.isOpen}
+        title={confirmData.title}
+        message={confirmData.message}
+        onConfirm={confirmData.onConfirm}
+        onCancel={() => setConfirmData({ ...confirmData, isOpen: false })}
+        isDanger={confirmData.isDanger}
+      />
     </div>
   );
 }

@@ -2,11 +2,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, ArrowRight, Flag, ShieldAlert, Check, AlertTriangle, Play, Maximize } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useExamStore } from '@/store/examStore';
 import { getImageUrl } from '@/lib/image';
+import AlertModal from '@/components/AlertModal';
 
 interface Question {
   id: string;
+  type?: string;
   content: string;
   optionA: string;
   optionB: string;
@@ -24,18 +27,30 @@ interface ExamClientProps {
 
 export default function ExamClient({ exam, questions, token }: ExamClientProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const currentUserId = (session?.user as any)?.id || '';
   
   // Zustand Store
-  const { examId, attemptId, serverEndTime, answers, startExam, setAnswer, finishExam, resetExam } = useExamStore();
+  const { examId, userId, attemptId, serverEndTime, answers, isFinished, startExam, setAnswer, finishExam, resetExam } = useExamStore();
 
   // Local State
   const [currentIdx, setCurrentIdx] = useState(0);
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isSubmittingRef = useRef(false); // ref to avoid stale closure in event listeners
+  const isSubmittingRef = useRef(false);
   const [hasStarted, setHasStarted] = useState(false);
   
+  // Custom Alert Modal state
+  const [alertData, setAlertData] = useState<{ isOpen: boolean; title?: string; message: string; type?: 'error' | 'warning' | 'info' }>({
+    isOpen: false,
+    message: ''
+  });
+
+  const showAlert = (message: string, title = 'Pemberitahuan', type: 'error' | 'warning' | 'info' = 'warning') => {
+    setAlertData({ isOpen: true, title, message, type });
+  };
+
   // Anti-Cheat states
   const [warnings, setWarnings] = useState(0);
   const [showWarningModal, setShowWarningModal] = useState(false);
@@ -49,10 +64,15 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
 
   const initExam = async () => {
     try {
-      // Check if store already has a running attempt for THIS exam
-      if (examId === exam.id && serverEndTime && attemptId) {
+      // Check if store already has a running attempt for THIS exam AND THIS exact logged-in user
+      if (examId === exam.id && userId === currentUserId && attemptId && serverEndTime && Date.now() < serverEndTime && !isFinished) {
         setHasStarted(true);
         return;
+      }
+
+      // If store belongs to another user or another exam or is finished, reset store first!
+      if (userId !== currentUserId || examId !== exam.id || isFinished) {
+        resetExam();
       }
       
       const res = await fetch('http://127.0.0.1:8000/api/attempts/start', {
@@ -65,23 +85,25 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
       });
       if (res.ok) {
         const data = await res.json();
-        startExam(exam.id, data.id, exam.durationMin);
+        startExam(exam.id, data.id, currentUserId, exam.durationMin);
         setHasStarted(true);
       } else {
-        alert("Gagal memulai ujian");
+        showAlert("Gagal memulai sesi ujian baru untuk akun Anda.", "Akses Ditolak", "error");
         router.push('/dashboard/siswa');
       }
     } catch (e) {
       console.error(e);
-      alert("Terjadi kesalahan jaringan");
+      showAlert("Terjadi kesalahan jaringan saat mulai ujian.", "Kesalahan Jaringan", "error");
     }
   };
 
   const handleStartWithFullScreen = async () => {
+    const tokenKey = `tokenUsage_${currentUserId}_${exam.id}`;
+
     // If exam requires token and not verified yet
     if (exam.requiresToken && !tokenVerified) {
       if (!inputToken) {
-        alert("Masukkan token ujian terlebih dahulu!");
+        showAlert("Masukkan token ujian terlebih dahulu!", "Token Diperlukan", "warning");
         return;
       }
       setIsVerifyingToken(true);
@@ -97,31 +119,29 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
         const data = await res.json();
         
         if (res.ok) {
-          const currentUsageCount = parseInt(localStorage.getItem(`tokenUsage_${exam.id}`) || '0');
+          const currentUsageCount = parseInt(localStorage.getItem(tokenKey) || '0');
           if (currentUsageCount >= 3) {
-            alert("Anda telah mencapai batas maksimal (3 kali) menggunakan token untuk masuk ke ujian ini.");
+            showAlert("Anda telah mencapai batas maksimal (3 kali) menggunakan token untuk masuk ke ujian ini.", "Batas Maksimal Token", "error");
             setIsVerifyingToken(false);
             return;
           }
-          localStorage.setItem(`tokenUsage_${exam.id}`, (currentUsageCount + 1).toString());
+          localStorage.setItem(tokenKey, (currentUsageCount + 1).toString());
           setTokenVerified(true);
-          // proceed to fullscreen and init
         } else {
-          alert(data.error || "Token tidak valid");
+          showAlert(data.error || "Token tidak valid", "Verifikasi Token Gagal", "error");
           setIsVerifyingToken(false);
           return;
         }
       } catch (err) {
-        alert("Terjadi kesalahan jaringan saat verifikasi token");
+        showAlert("Terjadi kesalahan jaringan saat verifikasi token", "Kesalahan Jaringan", "error");
         setIsVerifyingToken(false);
         return;
       }
       setIsVerifyingToken(false);
     } else if (exam.requiresToken && tokenVerified) {
-        // Already verified in this session, but let's check if usage limit is reached (edge case)
-        const currentUsageCount = parseInt(localStorage.getItem(`tokenUsage_${exam.id}`) || '0');
+        const currentUsageCount = parseInt(localStorage.getItem(tokenKey) || '0');
         if (currentUsageCount > 3) {
-           alert("Anda telah mencapai batas maksimal (3 kali) menggunakan token untuk masuk ke ujian ini.");
+           showAlert("Anda telah mencapai batas maksimal (3 kali) menggunakan token untuk masuk ke ujian ini.", "Batas Maksimal Token", "error");
            return;
         }
     }
@@ -132,7 +152,7 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
       }
       initExam();
     } catch (err) {
-      alert("Gagal memasuki mode Full-Screen. Ujian membutuhkan mode Full-Screen.");
+      showAlert("Gagal memasuki mode Full-Screen. Ujian membutuhkan mode Full-Screen.", "Mode Full-Screen Wajib", "warning");
     }
   };
 
@@ -202,11 +222,11 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
         router.replace(`/ujian/${exam.id}/selesai`);
       } else {
         const err = await res.json();
-        alert(err.error || "Gagal mengumpulkan ujian.");
+        showAlert(err.error || "Gagal mengumpulkan ujian.", "Gagal Submit", "error");
       }
     } catch (e) {
       console.error(e);
-      alert("Terjadi kesalahan jaringan saat mengumpulkan ujian.");
+      showAlert("Terjadi kesalahan jaringan saat mengumpulkan ujian.", "Kesalahan Jaringan", "error");
     } finally {
       isSubmittingRef.current = false;
       setIsSubmitting(false);
@@ -217,7 +237,6 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
   const handleCheatDetected = useCallback(async (reason: string) => {
     if (!attemptId || !hasStarted) return;
 
-    // Log cheat to backend
     try {
       await fetch(`http://127.0.0.1:8000/api/attempts/${attemptId}/cheat`, {
         method: 'POST',
@@ -252,8 +271,6 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
     };
 
     const handleFullscreenChange = () => {
-      // Ignore fullscreen exit when the exam is being submitted (normal exit)
-      // Use ref to avoid stale closure capturing old isSubmitting value
       if (!document.fullscreenElement && hasStarted && !isSubmittingRef.current) {
         handleCheatDetected("Keluar dari Mode Fullscreen");
       }
@@ -273,7 +290,6 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('dragstart', (e) => e.preventDefault());
 
-    // Prevent Back Navigation
     window.history.pushState(null, "", window.location.href);
     const preventBack = () => {
       window.history.pushState(null, "", window.location.href);
@@ -293,13 +309,21 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
 
   const preventCopyPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    alert("Tindakan menyalin/menempel tidak diizinkan selama ujian.");
+    showAlert("Tindakan menyalin atau menempel teks tidak diizinkan selama ujian berlangsung.", "Tindakan Dilarang", "warning");
   };
 
   // Splash Screen if not started
   if (!hasStarted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <AlertModal 
+          isOpen={alertData.isOpen}
+          title={alertData.title}
+          message={alertData.message}
+          type={alertData.type}
+          onClose={() => setAlertData({ ...alertData, isOpen: false })}
+        />
+
         <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-xl border border-gray-100 text-center">
           <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <Maximize className="w-10 h-10 text-primary-blue" />
@@ -314,7 +338,7 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
               <li>Dilarang pindah tab atau membuka aplikasi lain</li>
               <li>Dilarang menyalin (Copy) atau menempel (Paste) teks</li>
               <li>Maksimal peringatan pelanggaran adalah {maxWarnings} kali sebelum ujian otomatis dikumpulkan</li>
-              <li>Maksimal masuk/login menggunakan token adalah 3 kali</li>
+              <li>Maksimal masuk/login menggunakan token adalah 3 kali per akun</li>
             </ul>
           </div>
           
@@ -359,6 +383,14 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
       onCut={preventCopyPaste}
       onPaste={preventCopyPaste}
     >
+      <AlertModal 
+        isOpen={alertData.isOpen}
+        title={alertData.title}
+        message={alertData.message}
+        type={alertData.type}
+        onClose={() => setAlertData({ ...alertData, isOpen: false })}
+      />
+
       {/* Warning Modal */}
       {showWarningModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -429,7 +461,7 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
       <header className="bg-primary-blue-dark text-white px-4 py-3 flex items-center justify-between shrink-0 shadow-md relative z-10">
         <div className="flex-1">
           <h1 className="font-bold text-lg leading-tight">{exam.title}</h1>
-          <p className="text-[10px] text-blue-200 uppercase tracking-wider">SMKN 9 Smart Exam</p>
+          <p className="text-[10px] text-blue-200 uppercase tracking-wider">SI ULIN (Sistem Ujian Online) • SMKN 9</p>
         </div>
         
         <div className="flex flex-col items-center">
@@ -440,7 +472,6 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
         </div>
         
         <div className="flex-1 flex justify-end">
-          {/* Top Kumpulkan button removed as requested */}
         </div>
       </header>
 
@@ -472,33 +503,46 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
               {currentQ.content}
             </div>
             
-            <div className="space-y-3 mt-auto">
-              {[currentQ.optionA, currentQ.optionB, currentQ.optionC, currentQ.optionD, currentQ.optionE].filter(Boolean).map((option, idx) => {
-                const letter = String.fromCharCode(65 + idx);
-                const isSelected = answers[currentQ.id]?.selectedOption === letter;
-                return (
-                  <button
-                    key={letter}
-                    onClick={() => handleSelectAnswer(currentQ.id, letter)}
-                    className={`w-full flex items-center p-4 rounded-2xl border-2 transition-all ${
-                      isSelected 
-                        ? 'border-primary-blue bg-blue-50/50 shadow-md' 
-                        : 'border-gray-100 bg-white hover:border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mr-4 transition-colors ${
-                      isSelected ? 'bg-primary-blue text-white shadow-sm' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {letter}
-                    </span>
-                    <span className={`text-left font-medium ${isSelected ? 'text-primary-blue-dark' : 'text-gray-700'}`}>
-                      {option}
-                    </span>
-                    {isSelected && <Check className="w-5 h-5 text-primary-blue ml-auto shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
+            {currentQ.type === 'ESSAY' ? (
+              <div className="space-y-3 mt-auto">
+                <label className="block text-sm font-bold text-purple-900">Jawaban Esai (Uraian) Anda:</label>
+                <textarea
+                  rows={6}
+                  value={answers[currentQ.id]?.selectedOption || ''}
+                  onChange={e => handleSelectAnswer(currentQ.id, e.target.value)}
+                  placeholder="Ketikkan jawaban lengkap Anda di sini..."
+                  className="w-full p-4 rounded-2xl border-2 border-purple-200 focus:border-purple-600 focus:ring-2 focus:ring-purple-500/20 outline-none text-gray-800 transition-all font-sans text-base bg-purple-50/20"
+                />
+              </div>
+            ) : (
+              <div className="space-y-3 mt-auto">
+                {[currentQ.optionA, currentQ.optionB, currentQ.optionC, currentQ.optionD, currentQ.optionE].filter(Boolean).map((option, idx) => {
+                  const letter = String.fromCharCode(65 + idx);
+                  const isSelected = answers[currentQ.id]?.selectedOption === letter;
+                  return (
+                    <button
+                      key={letter}
+                      onClick={() => handleSelectAnswer(currentQ.id, letter)}
+                      className={`w-full flex items-center p-4 rounded-2xl border-2 transition-all ${
+                        isSelected 
+                          ? 'border-primary-blue bg-blue-50/50 shadow-md' 
+                          : 'border-gray-100 bg-white hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mr-4 transition-colors ${
+                        isSelected ? 'bg-primary-blue text-white shadow-sm' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {letter}
+                      </span>
+                      <span className={`text-left font-medium ${isSelected ? 'text-primary-blue-dark' : 'text-gray-700'}`}>
+                        {option}
+                      </span>
+                      {isSelected && <Check className="w-5 h-5 text-primary-blue ml-auto shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

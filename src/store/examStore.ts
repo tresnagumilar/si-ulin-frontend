@@ -3,17 +3,18 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface Answer {
   questionId: string;
-  selectedOption: string; // 'A', 'B', 'C', 'D', 'E'
+  selectedOption: string;
 }
 
 interface ExamState {
   examId: string | null;
+  userId: string | null;
   attemptId: string | null;
-  serverEndTime: number | null; // Timestamp representing when the exam must end
-  answers: Record<string, Answer>; // Key: questionId
+  serverEndTime: number | null;
+  answers: Record<string, Answer>;
   isFinished: boolean;
 
-  startExam: (examId: string, attemptId: string, durationMin: number) => void;
+  startExam: (examId: string, attemptId: string, userId: string, durationMin: number) => void;
   setAnswer: (questionId: string, selectedOption: string) => void;
   finishExam: () => void;
   resetExam: () => void;
@@ -23,14 +24,15 @@ export const useExamStore = create<ExamState>()(
   persist(
     (set, get) => ({
       examId: null,
+      userId: null,
       attemptId: null,
       serverEndTime: null,
       answers: {},
       isFinished: false,
 
-      startExam: (examId, attemptId, durationMin) => {
+      startExam: (examId, attemptId, userId, durationMin) => {
         const endTime = Date.now() + durationMin * 60 * 1000;
-        set({ examId, attemptId, serverEndTime: endTime, answers: {}, isFinished: false });
+        set({ examId, userId, attemptId, serverEndTime: endTime, answers: {}, isFinished: false });
       },
 
       setAnswer: (questionId, selectedOption) => {
@@ -48,10 +50,10 @@ export const useExamStore = create<ExamState>()(
       },
 
       finishExam: () => set({ isFinished: true }),
-      resetExam: () => set({ examId: null, attemptId: null, serverEndTime: null, answers: {}, isFinished: false }),
+      resetExam: () => set({ examId: null, userId: null, attemptId: null, serverEndTime: null, answers: {}, isFinished: false }),
     }),
     {
-      name: 'offline-exam-storage', // Will be saved in localStorage automatically
+      name: 'offline-exam-storage',
       storage: createJSONStorage(() => localStorage),
     }
   )

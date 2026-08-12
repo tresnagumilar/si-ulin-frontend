@@ -1,4 +1,4 @@
-import { Bell, Coins, Calendar, ArrowRight, Clock, CheckCircle2, ChevronRight, Calculator, Dna, FileText } from 'lucide-react';
+import { Bell, Calendar, ArrowRight, Clock, CheckCircle2, ChevronRight, Calculator, Dna, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
@@ -8,8 +8,6 @@ import CategoryFilterExams from './CategoryFilterExams';
 import { authOptions } from '../../api/auth/[...nextauth]/route';
 
 export default async function SiswaDashboard() {
-  const subjects = ['Semua', 'Matematika', 'B. Indonesia', 'Fisika', 'Biologi'];
-  
   const session = await getServerSession(authOptions);
   if (!session || !session.user) redirect('/');
 
@@ -28,8 +26,23 @@ export default async function SiswaDashboard() {
   const upcomingExam = data.upcomingExam;
   const attempts = data.attempts || [];
 
+  // Dynamic Subjects from Exams
+  const liveSubjects = Array.from(new Set(liveExams.map((e: any) => e.subject).filter(Boolean))) as string[];
+  const subjects: string[] = ['Semua', ...liveSubjects];
+
   const firstName = student.name.split(' ')[0];
   const initial = firstName.charAt(0).toUpperCase();
+
+  // Dynamic Greeting based on Hour
+  const currentHour = new Date().getHours();
+  let greeting = 'Selamat Pagi ☀️';
+  if (currentHour >= 11 && currentHour < 15) {
+    greeting = 'Selamat Siang 🌤️';
+  } else if (currentHour >= 15 && currentHour < 18) {
+    greeting = 'Selamat Sore 🌇';
+  } else if (currentHour >= 18 || currentHour < 5) {
+    greeting = 'Selamat Malam 🌙';
+  }
 
   // Prepare chart data
   const chartData = attempts.map((attempt: any) => ({
@@ -56,10 +69,10 @@ export default async function SiswaDashboard() {
               <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 border-2 border-primary-blue-dark rounded-full" />
             </div>
             <div>
-              <p className="text-white/80 text-xs font-medium">Selamat Pagi ⭐</p>
+              <p className="text-white/80 text-xs font-medium">{greeting}</p>
               <h2 className="text-white text-xl font-bold">Hai, {firstName}!</h2>
               {student.kelas ? (
-                <p className="text-white/60 text-xs mt-0.5">{student.kelas} {student.jurusan}</p>
+                <p className="text-white/60 text-xs mt-0.5">{student.kelas}</p>
               ) : (
                 <p className="text-red-300 font-bold text-[10px] mt-0.5 bg-red-900/40 px-2 py-0.5 rounded-full inline-block border border-red-500/30">Belum Pilih Kelas</p>
               )}
@@ -67,10 +80,6 @@ export default async function SiswaDashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-              <Coins className="w-4 h-4 text-accent-yellow" />
-              <span className="text-white text-xs font-bold">0</span>
-            </div>
             <button className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center border border-white/10 relative">
               <Bell className="w-5 h-5 text-white" />
             </button>

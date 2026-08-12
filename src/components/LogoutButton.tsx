@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { LogOut, AlertTriangle } from 'lucide-react';
 import { signOut } from 'next-auth/react';
+import { useExamStore } from '@/store/examStore';
 
 interface LogoutButtonProps {
   className?: string;
@@ -21,6 +22,7 @@ export default function LogoutButton({
 
   const handleLogout = () => {
     setShowModal(false);
+    useExamStore.getState().resetExam();
     signOut({ callbackUrl: '/' });
   };
 

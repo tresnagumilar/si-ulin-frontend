@@ -36,8 +36,9 @@ export default async function SiswaLayout({
       {/* Mobile Top Header */}
       <div className="md:hidden bg-white border-b border-gray-200 flex justify-between items-center px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 sticky top-0 z-50 shadow-sm">
         <div className="font-bold text-primary-blue-dark flex items-center gap-2">
-          <div className="w-6 h-6 bg-accent-yellow rounded-md flex items-center justify-center text-white text-xs">S</div>
-          Smart Exam
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-smkn9.png" alt="Logo SMKN 9" className="w-6 h-6 object-contain" />
+          <span>SI ULIN</span>
         </div>
         <NotificationBadge />
       </div>

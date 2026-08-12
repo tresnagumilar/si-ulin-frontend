@@ -29,6 +29,7 @@ export default async function UjianPage({ params }: { params: Promise<{ id: stri
   // We don't pass the correct `answer` to the client for security!
   const safeQuestions = exam.questions.map((q: any) => ({
     id: q.id,
+    type: q.type || 'PG',
     content: q.content,
     optionA: q.optionA,
     optionB: q.optionB,

@@ -1,32 +1,58 @@
 'use client';
 
-import { Home, BookOpen, FileText, User, HelpCircle } from 'lucide-react';
+import { Home, BookOpen, FileText, User, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import LogoutButton from '@/components/LogoutButton';
 import NotificationBadge from '@/components/NotificationBadge';
 
 export default function SiswaSidebar() {
   const pathname = usePathname();
+  const [isPinned, setIsPinned] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const isExpanded = isPinned || isHovered;
 
   const menu = [
     { label: 'Beranda', icon: Home, href: '/dashboard/siswa' },
     { label: 'Ujian Saya', icon: BookOpen, href: '/dashboard/siswa/ujian' },
     { label: 'Laporan Nilai', icon: FileText, href: '/dashboard/siswa/nilai' },
     { label: 'Profil Saya', icon: User, href: '/dashboard/siswa/profil' },
-    { label: 'Bantuan', icon: HelpCircle, href: '/dashboard/siswa/bantuan' },
   ];
 
   return (
     <>
+      {/* Invisible Hover Trigger Edge */}
+      <div 
+        className="hidden md:block fixed top-0 left-0 bottom-0 w-4 z-40 cursor-pointer"
+        onMouseEnter={() => setIsHovered(true)}
+      />
+
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col py-6 px-4 shrink-0">
-        <div className="flex items-center justify-between mb-8 px-2">
-          <div className="text-xl font-bold text-primary-blue-dark flex items-center">
-            <div className="w-8 h-8 bg-accent-yellow rounded-lg mr-3 flex items-center justify-center text-white font-bold shadow-sm">S</div>
-            Smart Exam
+      <aside 
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`hidden md:flex flex-col bg-white border-r border-gray-200 py-6 px-3 shrink-0 transition-all duration-300 ease-in-out z-30 ${isExpanded ? 'w-64 shadow-xl' : 'w-20'}`}
+      >
+        <div className="flex items-center justify-between mb-8 px-2 overflow-hidden">
+          <div className="text-lg font-bold text-primary-blue-dark flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-smkn9.png" alt="Logo SMKN 9" className="w-8 h-8 object-contain shrink-0" />
+            {isExpanded && (
+              <div className="flex flex-col overflow-hidden">
+                <span className="whitespace-nowrap font-bold text-primary-blue-dark leading-tight text-base">SI ULIN</span>
+                <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Sistem Ujian Online</span>
+              </div>
+            )}
           </div>
-          <NotificationBadge />
+          <button 
+            onClick={() => setIsPinned(!isPinned)}
+            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+            title={isPinned ? 'Kunci Sidebar' : 'Buka Kunci Sidebar'}
+          >
+            <Menu className="w-5 h-5" />
+          </button>
         </div>
         <nav className="space-y-2 flex-1">
           {menu.map((item) => {
@@ -35,13 +61,15 @@ export default function SiswaSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center px-4 py-3 rounded-xl font-medium transition-all ${
+                className={`flex items-center px-3.5 py-3 rounded-xl font-medium transition-all ${
                   isActive
                     ? 'bg-blue-50 text-primary-blue shadow-sm font-semibold'
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                 }`}
+                title={!isExpanded ? item.label : undefined}
               >
-                <item.icon className="w-5 h-5 mr-3" /> {item.label}
+                <item.icon className="w-5 h-5 shrink-0 mr-3" />
+                {isExpanded && <span className="whitespace-nowrap">{item.label}</span>}
               </Link>
             );
           })}
@@ -49,9 +77,9 @@ export default function SiswaSidebar() {
 
         <div className="pt-4 border-t border-gray-100">
           <LogoutButton 
-            className="flex items-center px-4 py-3 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-xl font-medium transition-colors w-full"
-            iconClassName="w-5 h-5 mr-3"
-            textClassName=""
+            className="flex items-center px-3 py-3 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-xl font-medium transition-colors w-full"
+            iconClassName="w-5 h-5 shrink-0 mr-3"
+            showText={isExpanded}
           />
         </div>
       </aside>

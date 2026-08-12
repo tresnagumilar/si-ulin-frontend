@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SMKN 9 Smart Exam",
-  description: "Platform Ujian Cerdas Berbasis Web",
+  title: "SI ULIN - Sistem Ujian Online",
+  description: "SI ULIN (Sistem Ujian Online) SMKN 9 Bandung",
 };
 
 export const viewport = {

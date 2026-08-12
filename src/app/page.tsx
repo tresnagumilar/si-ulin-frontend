@@ -53,11 +53,18 @@ export default function LoginPage() {
 
     if (!isLogin) {
       const name = formData.get('name') as string;
+      const subject = formData.get('subject') as string;
       try {
         const regRes = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password, role: role.toUpperCase() })
+          body: JSON.stringify({ 
+            name, 
+            email, 
+            password, 
+            role: role.toUpperCase(),
+            subject: role === 'guru' ? subject : undefined 
+          })
         });
         const regData = await regRes.json();
         if (!regRes.ok) {
@@ -116,12 +123,13 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md flex flex-col items-center">
         {/* Logo and Title */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-24 mb-4 relative flex items-center justify-center">
-            <div className="absolute inset-0 bg-accent-yellow transform -skew-y-12 rounded-xl shadow-lg shadow-accent-yellow/20" />
-            <Shield className="w-10 h-10 text-primary-blue-dark relative z-10" />
+          <div className="w-24 h-24 mb-3 relative flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-smkn9.png" alt="Logo SMKN 9" className="w-full h-full object-contain filter drop-shadow-lg" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">SMKN 9 Smart Exam</h1>
-          <p className="text-blue-200 text-sm font-medium tracking-wide">UJIAN CERDAS, HASIL TERBAIK</p>
+          <h1 className="text-4xl font-black text-white mb-1 tracking-wider">SI ULIN</h1>
+          <p className="text-blue-100 text-sm font-bold tracking-wide">Sistem Ujian Online</p>
+          <p className="text-blue-200 text-[11px] font-semibold tracking-widest uppercase mt-0.5">SMKN 9 BANDUNG</p>
         </div>
 
         {/* Login Card */}
@@ -162,6 +170,23 @@ export default function LoginPage() {
                     className="block w-full pl-11 pr-4 py-3.5 border-0 bg-gray-50/50 rounded-2xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary-blue transition-all"
                     placeholder="Nama Lengkap"
                     required={!isLogin}
+                  />
+                </div>
+              </div>
+            )}
+
+            {!isLogin && role === 'guru' && (
+              <div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Key className="h-5 w-5 text-gray-400 group-focus-within:text-primary-blue transition-colors" />
+                  </div>
+                  <input
+                    name="subject"
+                    type="text"
+                    className="block w-full pl-11 pr-4 py-3.5 border-0 bg-gray-50/50 rounded-2xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary-blue transition-all"
+                    placeholder="Mata Pelajaran yang Diajar (Wajib)"
+                    required={!isLogin && role === 'guru'}
                   />
                 </div>
               </div>
@@ -286,7 +311,7 @@ export default function LoginPage() {
           <span className="text-accent-yellow">⭐</span>
         </div>
         <div className="mt-2 text-white/50 text-xs">
-          SMKN 9 Smart Exam v2.4.1 - 2025
+          SI ULIN SMKN 9 v2.4.1 - 2026
         </div>
       </div>
 

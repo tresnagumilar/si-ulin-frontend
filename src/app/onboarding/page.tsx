@@ -15,8 +15,23 @@ export default function OnboardingPage() {
   const [tglLahir, setTglLahir] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Master Academic Options
+  const [tingkatOptions, setTingkatOptions] = useState<any[]>([]);
+  const [jurusanOptions, setJurusanOptions] = useState<any[]>([]);
+  const [kelasOptions, setKelasOptions] = useState<any[]>([]);
+
   useEffect(() => {
-    // If user has no session, push to login
+    fetch('http://localhost:8000/api/academic/tree')
+      .then(res => res.json())
+      .then(data => {
+        if (data.tingkats) setTingkatOptions(data.tingkats);
+        if (data.jurusans) setJurusanOptions(data.jurusans);
+        if (data.kelases) setKelasOptions(data.kelases);
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
     if (session === null) {
       router.push('/');
     } else if (session?.user?.name && !nama) {
@@ -30,6 +45,8 @@ export default function OnboardingPage() {
 
     setLoading(true);
 
+    const fullKelas = `${tingkat} ${jurusan} ${subKelas}`.trim().replace(/\s+/g, ' ');
+
     try {
       const res = await fetch('http://localhost:8000/api/onboarding', {
         method: 'POST',
@@ -40,7 +57,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           name: nama,
           role,
-          kelas: role === 'SISWA' ? `${tingkat} ${jurusan} ${subKelas}` : undefined,
+          kelas: role === 'SISWA' ? fullKelas : undefined,
           jurusan: role === 'SISWA' ? jurusan : undefined,
           tgl_lahir: tglLahir
         })
@@ -48,7 +65,6 @@ export default function OnboardingPage() {
 
       const data = await res.json();
       if (res.ok) {
-        // Update session token data
         await update({
           name: data.user.name,
           role: data.user.role,
@@ -58,7 +74,6 @@ export default function OnboardingPage() {
           tgl_lahir: data.user.tgl_lahir
         });
 
-        // After updating session, redirect appropriately
         if (!data.user.is_approved && data.user.role !== 'SISWA') {
           router.push('/menunggu-persetujuan');
         } else {
@@ -83,7 +98,8 @@ export default function OnboardingPage() {
         <div className="bg-primary-blue p-8 flex flex-col items-center relative overflow-hidden text-white">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full mix-blend-screen filter blur-xl transform translate-x-10 -translate-y-10" />
           <div className="relative z-10 w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30 mb-4">
-            <Shield className="w-10 h-10 text-white" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-smkn9.png" alt="Logo SMKN 9" className="w-12 h-12 object-contain" />
           </div>
           <h1 className="text-2xl font-bold relative z-10">Lengkapi Profil</h1>
           <p className="text-blue-100 text-sm mt-1 relative z-10">Mohon lengkapi data diri Anda</p>
@@ -133,12 +149,18 @@ export default function OnboardingPage() {
                     required
                     value={tingkat}
                     onChange={e => setTingkat(e.target.value)}
-                    className="block w-full px-4 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-blue transition-all outline-none"
+                    className="block w-full px-3 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 text-sm focus:ring-2 focus:ring-primary-blue transition-all outline-none"
                   >
                     <option value="">Tingkat</option>
-                    <option value="X">X</option>
-                    <option value="XI">XI</option>
-                    <option value="XII">XII</option>
+                    {tingkatOptions.length > 0 ? (
+                      tingkatOptions.map(t => <option key={t.id} value={t.name}>{t.name}</option>)
+                    ) : (
+                      <>
+                        <option value="X">X</option>
+                        <option value="XI">XI</option>
+                        <option value="XII">XII</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div>
@@ -147,30 +169,39 @@ export default function OnboardingPage() {
                     required
                     value={jurusan}
                     onChange={e => setJurusan(e.target.value)}
-                    className="block w-full px-4 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-blue transition-all outline-none"
+                    className="block w-full px-3 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 text-sm focus:ring-2 focus:ring-primary-blue transition-all outline-none"
                   >
                     <option value="">Jurusan</option>
-                    <option value="IPA">IPA</option>
-                    <option value="IPS">IPS</option>
-                    <option value="TKJ">TKJ</option>
-                    <option value="RPL">RPL</option>
-                    <option value="AKL">AKL</option>
+                    {jurusanOptions.length > 0 ? (
+                      jurusanOptions.map(j => <option key={j.id} value={j.code || j.name}>{j.code || j.name}</option>)
+                    ) : (
+                      <>
+                        <option value="TKJ">TKJ</option>
+                        <option value="RPL">RPL</option>
+                        <option value="AKL">AKL</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Grup</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Kelas</label>
                   <select
                     required
                     value={subKelas}
                     onChange={e => setSubKelas(e.target.value)}
-                    className="block w-full px-4 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-blue transition-all outline-none"
+                    className="block w-full px-3 py-3 border border-gray-200 bg-gray-50/50 rounded-xl text-gray-900 text-sm focus:ring-2 focus:ring-primary-blue transition-all outline-none"
                   >
-                    <option value="">Grup</option>
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                    <option value="D">D</option>
-                    <option value="E">E</option>
+                    <option value="">Kelas</option>
+                    {kelasOptions.length > 0 ? (
+                      kelasOptions.map(k => <option key={k.id} value={k.name}>{k.name}</option>)
+                    ) : (
+                      <>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>

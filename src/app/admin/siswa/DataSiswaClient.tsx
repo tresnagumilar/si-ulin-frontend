@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Search, Trash2, User, UserCheck, Key, X, Lock, Unlock } from 'lucide-react';
+import { Search, Trash2, User, UserCheck, Key, X, Lock, Unlock, Pencil } from 'lucide-react';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function DataSiswaClient({ token }: { token: string }) {
   const [users, setUsers] = useState<any[]>([]);
@@ -10,6 +12,34 @@ export default function DataSiswaClient({ token }: { token: string }) {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [selectedUserForPassword, setSelectedUserForPassword] = useState<any>(null);
   const [newPassword, setNewPassword] = useState('');
+
+  // Edit User State
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    role: 'SISWA',
+    kelas: '',
+    jurusan: '',
+    subject: ''
+  });
+
+  // Custom Alert & Confirm Modals
+  const [alertData, setAlertData] = useState<{ isOpen: boolean; title?: string; message: string; type?: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false, message: ''
+  });
+  const [confirmData, setConfirmData] = useState<{ isOpen: boolean; title?: string; message: string; onConfirm: () => void }>({
+    isOpen: false, message: '', onConfirm: () => {}
+  });
+
+  const showAlert = (message: string, title = 'Pemberitahuan', type: 'error' | 'warning' | 'info' | 'success' = 'warning') => {
+    setAlertData({ isOpen: true, title, message, type });
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void, title = 'Konfirmasi Tindakan') => {
+    setConfirmData({ isOpen: true, title, message, onConfirm });
+  };
 
   const fetchUsers = async () => {
     try {
@@ -31,17 +61,25 @@ export default function DataSiswaClient({ token }: { token: string }) {
     fetchUsers();
   }, []);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Yakin ingin menghapus pengguna ini?')) return;
-    try {
-      const res = await fetch(`http://localhost:8000/api/admin/users/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) fetchUsers();
-    } catch (error) {
-      console.error(error);
-    }
+  const handleDelete = (id: number) => {
+    showConfirm('Apakah Anda yakin ingin menghapus pengguna ini secara permanen?', async () => {
+      setConfirmData({ ...confirmData, isOpen: false });
+      try {
+        const res = await fetch(`http://localhost:8000/api/admin/users/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchUsers();
+          showAlert('Pengguna berhasil dihapus.', 'Berhasil', 'success');
+        } else {
+          showAlert('Gagal menghapus pengguna.', 'Error', 'error');
+        }
+      } catch (error) {
+        console.error(error);
+        showAlert('Gagal menghapus pengguna karena kendala jaringan.', 'Error', 'error');
+      }
+    }, 'Hapus Pengguna');
   };
 
   const handleToggleQuestionAccess = async (teacherId: number) => {
@@ -53,17 +91,18 @@ export default function DataSiswaClient({ token }: { token: string }) {
       if (res.ok) {
         fetchUsers();
       } else {
-        alert('Gagal mengubah izin akses membuat soal');
+        showAlert('Gagal mengubah izin akses membuat soal', 'Gagal', 'error');
       }
     } catch (error) {
       console.error(error);
+      showAlert('Terjadi kesalahan jaringan', 'Error', 'error');
     }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword || newPassword.length < 6) {
-      alert('Password minimal 6 karakter');
+      showAlert('Password minimal terdiri dari 6 karakter', 'Validasi Gagal', 'warning');
       return;
     }
     
@@ -77,15 +116,55 @@ export default function DataSiswaClient({ token }: { token: string }) {
         body: JSON.stringify({ password: newPassword })
       });
       if (res.ok) {
-        alert('Password berhasil diubah');
+        showAlert('Password berhasil diubah', 'Berhasil', 'success');
         setPasswordModalOpen(false);
         setNewPassword('');
         setSelectedUserForPassword(null);
       } else {
-        alert('Gagal mengubah password');
+        showAlert('Gagal mengubah password', 'Gagal', 'error');
       }
     } catch (error) {
       console.error(error);
+      showAlert('Terjadi kesalahan jaringan', 'Error', 'error');
+    }
+  };
+
+  const handleOpenEditModal = (user: any) => {
+    setSelectedUserForEdit(user);
+    setEditForm({
+      name: user.name || '',
+      email: user.email || '',
+      role: user.role || 'SISWA',
+      kelas: user.kelas || '',
+      jurusan: user.jurusan || '',
+      subject: user.subject || ''
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserForEdit) return;
+
+    try {
+      const res = await fetch(`http://localhost:8000/api/admin/users/${selectedUserForEdit.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editForm)
+      });
+      if (res.ok) {
+        showAlert('Data pengguna berhasil diperbarui!', 'Berhasil', 'success');
+        setEditModalOpen(false);
+        fetchUsers();
+      } else {
+        showAlert('Gagal memperbarui data pengguna.', 'Gagal', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showAlert('Terjadi kesalahan jaringan', 'Error', 'error');
     }
   };
 
@@ -119,7 +198,8 @@ export default function DataSiswaClient({ token }: { token: string }) {
               <tr className="bg-gray-50 border-b border-gray-200 text-sm text-gray-500">
                 <th className="p-4 font-semibold">Pengguna</th>
                 <th className="p-4 font-semibold">Peran</th>
-                <th className="p-4 font-semibold">Detail / Izin Pembuatan Soal</th>
+                <th className="p-4 font-semibold">Mata Pelajaran</th>
+                <th className="p-4 font-semibold">Detail Kelas</th>
                 <th className="p-4 font-semibold">Tanggal Daftar</th>
                 <th className="p-4 font-semibold text-right">Aksi</th>
               </tr>
@@ -127,13 +207,13 @@ export default function DataSiswaClient({ token }: { token: string }) {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
                     Memuat data pengguna...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
                     Tidak ada pengguna ditemukan.
                   </td>
                 </tr>
@@ -154,6 +234,11 @@ export default function DataSiswaClient({ token }: { token: string }) {
                     <td className="p-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${user.role === 'GURU' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                         {user.role}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-sm font-bold text-gray-800">
+                        {user.role === 'GURU' ? (user.subject || '-') : '-'}
                       </span>
                     </td>
                     <td className="p-4">
@@ -204,6 +289,13 @@ export default function DataSiswaClient({ token }: { token: string }) {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => handleOpenEditModal(user)}
+                          className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors inline-flex items-center"
+                          title="Edit Pengguna (Kelas / Role / Mapel)"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => {
                             setSelectedUserForPassword(user);
@@ -265,6 +357,124 @@ export default function DataSiswaClient({ token }: { token: string }) {
           </div>
         </div>
       )}
+
+      {/* Edit User Modal */}
+      {editModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-gray-900">Edit Data Pengguna</h3>
+              <button onClick={() => setEditModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveEditUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-blue outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-blue outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Peran (Role)</label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-blue outline-none bg-white"
+                >
+                  <option value="SISWA">SISWA</option>
+                  <option value="GURU">GURU</option>
+                </select>
+              </div>
+
+              {editForm.role === 'SISWA' ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: X DKV 1"
+                      value={editForm.kelas}
+                      onChange={(e) => setEditForm({ ...editForm, kelas: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-blue outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Jurusan</label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: DKV"
+                      value={editForm.jurusan}
+                      onChange={(e) => setEditForm({ ...editForm, jurusan: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-blue outline-none"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mata Pelajaran (Mapel)</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Guru Informatika"
+                    value={editForm.subject}
+                    onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-blue outline-none"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 font-semibold hover:bg-gray-100 rounded-xl"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-primary-blue hover:bg-primary-blue-dark text-white font-bold rounded-xl transition-colors shadow-sm"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <AlertModal 
+        isOpen={alertData.isOpen}
+        title={alertData.title}
+        message={alertData.message}
+        type={alertData.type}
+        onClose={() => setAlertData({ ...alertData, isOpen: false })}
+      />
+
+      <ConfirmModal
+        isOpen={confirmData.isOpen}
+        title={confirmData.title}
+        message={confirmData.message}
+        onConfirm={confirmData.onConfirm}
+        onCancel={() => setConfirmData({ ...confirmData, isOpen: false })}
+      />
     </div>
   );
 }

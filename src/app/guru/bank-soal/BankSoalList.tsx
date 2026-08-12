@@ -1,7 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, FolderOpen, Trash2, Edit } from 'lucide-react';
+import { Plus, FolderOpen, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function BankSoalList({ token }: { token: string }) {
   const [banks, setBanks] = useState<any[]>([]);
@@ -9,6 +11,22 @@ export default function BankSoalList({ token }: { token: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newBank, setNewBank] = useState({ title: '', subject: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Custom Alert & Confirm Modals
+  const [alertData, setAlertData] = useState<{ isOpen: boolean; title?: string; message: string; type?: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false, message: ''
+  });
+  const [confirmData, setConfirmData] = useState<{ isOpen: boolean; title?: string; message: string; onConfirm: () => void }>({
+    isOpen: false, message: '', onConfirm: () => {}
+  });
+
+  const showAlert = (message: string, title = 'Pemberitahuan', type: 'error' | 'warning' | 'info' | 'success' = 'warning') => {
+    setAlertData({ isOpen: true, title, message, type });
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void, title = 'Konfirmasi Hapus') => {
+    setConfirmData({ isOpen: true, title, message, onConfirm });
+  };
 
   const fetchBanks = async () => {
     try {
@@ -45,29 +63,38 @@ export default function BankSoalList({ token }: { token: string }) {
         setIsModalOpen(false);
         setNewBank({ title: '', subject: '' });
         fetchBanks();
+        showAlert('Bank Soal berhasil dibuat!', 'Berhasil', 'success');
       } else {
-        alert("Gagal membuat bank soal.");
+        showAlert("Gagal membuat bank soal.", "Gagal", "error");
       }
     } catch (e) {
-      alert("Terjadi kesalahan.");
+      showAlert("Terjadi kesalahan jaringan saat membuat bank soal.", "Error", "error");
     }
     setIsSubmitting(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Hapus Bank Soal ini beserta isinya?")) return;
-    try {
-      const res = await fetch(`http://localhost:8000/api/question-banks/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) fetchBanks();
-    } catch (e) {
-      console.error(e);
-    }
+  const handleDelete = (id: string) => {
+    showConfirm("Apakah Anda yakin ingin menghapus Bank Soal ini beserta seluruh isi soal di dalamnya secara permanen?", async () => {
+      setConfirmData({ ...confirmData, isOpen: false });
+      try {
+        const res = await fetch(`http://localhost:8000/api/question-banks/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchBanks();
+          showAlert('Bank Soal berhasil dihapus.', 'Berhasil', 'success');
+        } else {
+          showAlert('Gagal menghapus Bank Soal.', 'Gagal', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showAlert('Terjadi kesalahan jaringan saat menghapus.', 'Error', 'error');
+      }
+    });
   };
 
-  if (loading) return <div className="text-center p-12 text-gray-500">Memuat data...</div>;
+  if (loading) return <div className="text-center p-12 text-gray-500 font-medium">Memuat data...</div>;
 
   return (
     <>
@@ -120,7 +147,7 @@ export default function BankSoalList({ token }: { token: string }) {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-in zoom-in duration-150">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Buat Bank Soal Baru</h3>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
@@ -151,6 +178,22 @@ export default function BankSoalList({ token }: { token: string }) {
           </div>
         </div>
       )}
+
+      <AlertModal 
+        isOpen={alertData.isOpen}
+        title={alertData.title}
+        message={alertData.message}
+        type={alertData.type}
+        onClose={() => setAlertData({ ...alertData, isOpen: false })}
+      />
+
+      <ConfirmModal
+        isOpen={confirmData.isOpen}
+        title={confirmData.title}
+        message={confirmData.message}
+        onConfirm={confirmData.onConfirm}
+        onCancel={() => setConfirmData({ ...confirmData, isOpen: false })}
+      />
     </>
   );
 }

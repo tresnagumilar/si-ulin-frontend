@@ -1,4 +1,4 @@
-import { FileText, Download, TrendingUp, Award, BarChart3 } from 'lucide-react';
+import { FileText, TrendingUp } from 'lucide-react';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '../../../api/auth/[...nextauth]/route';
@@ -18,70 +18,44 @@ export default async function LaporanNilaiPage() {
   if (!res.ok) redirect('/onboarding');
   
   const data = await res.json();
-  // attempts from api are ordered asc, let's reverse them for this view
   const attempts: any[] = data.attempts ? [...data.attempts].reverse() : [];
   const totalExams = attempts.length;
   
   let averageScore = 0;
-  let passedExams = 0;
 
   if (totalExams > 0) {
     const totalScore = attempts.reduce((acc, curr) => acc + (curr.score || 0), 0);
     averageScore = totalScore / totalExams;
-    passedExams = attempts.filter(a => (a.score || 0) >= 70).length; // assume passing score is 70
   }
-
-  const passRate = totalExams > 0 ? (passedExams / totalExams) * 100 : 0;
 
   return (
     <div className="flex flex-col w-full h-full p-4 md:p-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-end mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Laporan Nilai</h1>
-          <p className="text-gray-500">Evaluasi performa ujian dan perkembangan belajar Anda.</p>
-        </div>
-        <button className="hidden sm:flex items-center gap-2 bg-white border border-gray-200 text-primary-blue px-4 py-2 rounded-xl font-semibold hover:bg-gray-50 transition-colors">
-          <Download className="w-4 h-4" /> Ekspor PDF
-        </button>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Laporan Nilai</h1>
+        <p className="text-gray-500">Evaluasi performa ujian dan hasil belajar Anda.</p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-          <div className="w-10 h-10 bg-blue-50 text-primary-blue rounded-full flex items-center justify-center mb-3">
-            <FileText className="w-5 h-5" />
+      {/* Summary Cards (Simplified) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-50 text-primary-blue rounded-2xl flex items-center justify-center shrink-0">
+            <FileText className="w-6 h-6" />
           </div>
-          <p className="text-2xl font-bold text-gray-900 mb-1">{totalExams}</p>
-          <p className="text-xs text-gray-500 font-medium">Ujian Selesai</p>
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{totalExams}</p>
+            <p className="text-xs text-gray-500 font-medium">Ujian Selesai</p>
+          </div>
         </div>
         
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-          <div className="w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-3">
-            <TrendingUp className="w-5 h-5" />
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center shrink-0">
+            <TrendingUp className="w-6 h-6" />
           </div>
-          <p className="text-2xl font-bold text-gray-900 mb-1">{averageScore.toFixed(1)}</p>
-          <p className="text-xs text-gray-500 font-medium">Rata-rata Nilai</p>
-        </div>
-        
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center opacity-50">
-          <div className="w-10 h-10 bg-yellow-50 text-accent-yellow-hover rounded-full flex items-center justify-center mb-3">
-            <Award className="w-5 h-5" />
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{averageScore.toFixed(1)}</p>
+            <p className="text-xs text-gray-500 font-medium">Rata-rata Nilai</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900 mb-1">-</p>
-          <p className="text-xs text-gray-500 font-medium">Peringkat Kelas</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-          <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-3 relative">
-            <svg className="absolute w-full h-full -rotate-90 transform">
-              <circle cx="20" cy="20" r="18" fill="none" className="stroke-purple-200" strokeWidth="3" />
-              <circle cx="20" cy="20" r="18" fill="none" className="stroke-purple-600" strokeWidth="3" strokeDasharray={`${(passRate / 100) * 113} 113`} strokeLinecap="round" />
-            </svg>
-            <BarChart3 className="w-5 h-5 z-10" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900 mb-1">{passRate.toFixed(0)}%</p>
-          <p className="text-xs text-gray-500 font-medium">Tingkat Kelulusan</p>
         </div>
       </div>
 
@@ -102,9 +76,9 @@ export default async function LaporanNilaiPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {attempts.map((attempt, idx) => {
-              const isPassed = (attempt.score || 0) >= 70;
+              const isPassed = (attempt.score || 0) >= (attempt.exam?.passingScore || 70);
               return (
-                <div key={attempt.id} className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-gray-50/80 transition-all duration-300 transform hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${idx * 100}ms` }}>
+                <div key={attempt.id} className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-gray-50/80 transition-all duration-300">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 uppercase">{attempt.exam.subject}</span>
