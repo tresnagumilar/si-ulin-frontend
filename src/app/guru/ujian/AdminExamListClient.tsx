@@ -208,7 +208,125 @@ export default function AdminExamListClient({ initialExams, token }: { initialEx
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto w-full max-w-full touch-pan-x">
+      {/* Mobile Card View */}
+      <div className="block md:hidden space-y-4 mb-6">
+        {exams.length === 0 ? (
+          <div className="p-6 bg-white rounded-2xl border border-gray-200 text-center text-gray-500 text-sm">
+            Belum ada ujian yang dibuat.
+          </div>
+        ) : (
+          exams.map(exam => {
+            const parseDate = (dStr: string) => {
+              if (!dStr) return new Date(0);
+              const norm = dStr.includes(' ') && !dStr.includes('T') ? dStr.replace(' ', 'T') : dStr;
+              return new Date(norm);
+            };
+            const expDate = parseDate(exam.token_expires_at!);
+            const isExpired = exam.token_expires_at ? new Date() > expDate : false;
+
+            return (
+              <div key={exam.id} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold bg-blue-50 text-primary-blue px-2 py-0.5 rounded border border-blue-100 uppercase tracking-wider">
+                      {exam.subject}
+                    </span>
+                    <h3 className="font-bold text-gray-900 text-base mt-1">{exam.title}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">{exam.durationMin} Menit • {exam.questions_count || 0} Soal • {exam.attempts_count || 0} Siswa</p>
+                  </div>
+                  <button 
+                    onClick={() => toggleLive(exam.id, exam.isLive)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors shrink-0 ${
+                      exam.isLive 
+                      ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' 
+                      : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                    }`}
+                  >
+                    {exam.isLive ? '🔴 LIVE' : '⚪ DRAFT'}
+                  </button>
+                </div>
+
+                {exam.isLive && (
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-600">Token Ujian:</span>
+                      {isExpired && (
+                        <span className="text-[10px] font-bold text-red-600 bg-red-100 border border-red-200 px-1.5 py-0.5 rounded">
+                          EXPIRED
+                        </span>
+                      )}
+                    </div>
+                    {exam.exam_token ? (
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-mono font-bold tracking-wider text-base px-2.5 py-1 rounded border ${
+                            isExpired ? 'bg-red-50 text-red-600 border-red-200 line-through' : 'bg-blue-50 text-primary-blue-dark border-blue-100'
+                          }`}>
+                            {exam.exam_token}
+                          </span>
+                          <button 
+                            onClick={() => handleGenerateToken(exam.id)}
+                            title="Generate Ulang Token"
+                            className="p-1.5 text-gray-600 hover:text-primary-blue bg-white rounded-lg border border-gray-200 shadow-sm"
+                          >
+                            <RotateCw className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <span className={`text-xs ${isExpired ? 'text-red-500 font-semibold' : 'text-gray-500'}`}>
+                          {isExpired ? 'Kadaluarsa: ' : 'Exp: '} 
+                          {expDate.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
+                        </span>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => handleGenerateToken(exam.id)}
+                        className="w-full text-xs bg-primary-blue text-white py-2 rounded-lg font-bold hover:bg-primary-blue-dark transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <RotateCw className="w-4 h-4" /> Buat Token Ujian
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-1 overflow-x-auto">
+                  <div className="flex items-center gap-1.5">
+                    {exam.isLive && (
+                      <Link href={`/guru/ujian/${exam.id}/live`} className="px-2.5 py-1.5 text-xs font-bold text-white bg-red-500 rounded-lg flex items-center gap-1 shadow-sm shrink-0">
+                        <Activity className="w-3.5 h-3.5" /> Monitor
+                      </Link>
+                    )}
+                    <Link href={`/guru/ujian/${exam.id}/hasil`} className="px-2.5 py-1.5 text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg flex items-center gap-1 border border-orange-100 shrink-0">
+                      <Eye className="w-3.5 h-3.5" /> Rekap
+                    </Link>
+                    <Link href={`/guru/ujian/${exam.id}`} className="px-2.5 py-1.5 text-xs font-bold text-primary-blue bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center gap-1 border border-blue-100 shrink-0">
+                      <Settings className="w-3.5 h-3.5" /> Soal
+                    </Link>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button 
+                      onClick={() => handleExport(exam.id, exam.title)} 
+                      className="p-1.5 text-green-600 bg-green-50 rounded-lg hover:bg-green-100 border border-green-100"
+                      title="Unduh Excel"
+                    >
+                      <DownloadCloud className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(exam.id)} 
+                      className="p-1.5 text-red-500 bg-red-50 rounded-lg hover:bg-red-100 border border-red-100"
+                      title="Hapus Ujian"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto w-full max-w-full touch-pan-x">
         <table className="w-full text-left min-w-[700px]">
           <thead className="bg-gray-50 border-b border-gray-200 text-sm text-gray-500">
             <tr>
