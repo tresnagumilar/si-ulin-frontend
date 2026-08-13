@@ -28,6 +28,8 @@ export default function LoginPageClient() {
           displayError = 'Terjadi kesalahan konfigurasi autentikasi pada server.';
         } else if (errorMsg === 'AccessDenied') {
           displayError = 'Akses ditolak. Akun Google Anda tidak memiliki izin untuk masuk.';
+        } else if (errorMsg === 'single_device_conflict') {
+          displayError = 'Akun ini baru saja masuk di perangkat lain. Sesi Anda pada perangkat ini telah diakhiri.';
         }
 
         alert(displayError);

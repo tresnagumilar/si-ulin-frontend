@@ -317,8 +317,8 @@ export default function HasilUjianClient({ exam, initialAttempts }: { exam: any;
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto w-full max-w-full touch-pan-x">
+          <table className="w-full text-left border-collapse min-w-[650px]">
             <thead>
               <tr className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider">
                 <th className="px-6 py-4 font-semibold">Peringkat</th>
@@ -476,8 +476,8 @@ export default function HasilUjianClient({ exam, initialAttempts }: { exam: any;
               Belum ada data analisis soal untuk ujian ini.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto w-full max-w-full touch-pan-x">
+              <table className="w-full text-left border-collapse min-w-[650px]">
                 <thead>
                   <tr className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider">
                     <th className="px-4 py-3 font-semibold text-center w-12">No</th>
@@ -604,8 +604,8 @@ export default function HasilUjianClient({ exam, initialAttempts }: { exam: any;
               <p className="text-sm text-gray-500">Daftar aktivitas mencurigakan selama ujian berlangsung.</p>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full max-w-full touch-pan-x">
+            <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
                 <tr className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider">
                   <th className="px-6 py-4 font-semibold">Siswa</th>

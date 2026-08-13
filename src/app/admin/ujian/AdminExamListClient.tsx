@@ -168,8 +168,8 @@ export default function AdminExamListClient({ initialExams, token }: { initialEx
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-      <table className="w-full text-left">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto w-full max-w-full touch-pan-x">
+      <table className="w-full text-left min-w-[700px]">
         <thead className="bg-gray-50 border-b border-gray-200 text-sm text-gray-500">
           <tr>
             <th className="px-6 py-4 font-semibold">Judul Ujian</th>
