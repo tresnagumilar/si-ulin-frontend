@@ -69,6 +69,13 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const localBlobUrl = URL.createObjectURL(file);
+    if (isEditMode) {
+      setEditQ(prev => ({ ...prev, imageUrl: localBlobUrl }));
+    } else {
+      setNewQ(prev => ({ ...prev, imageUrl: localBlobUrl }));
+    }
+
     setIsUploadingImage(true);
     const formData = new FormData();
     formData.append('file', file);

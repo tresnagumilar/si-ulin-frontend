@@ -219,7 +219,13 @@ export default function AdminExamListClient({ initialExams, token }: { initialEx
                     {exam.isLive && (
                       <div className="mt-2">
                         {exam.exam_token ? (() => {
-                          const isExpired = exam.token_expires_at ? new Date() > new Date(exam.token_expires_at) : false;
+                          const parseDate = (dStr: string) => {
+                            if (!dStr) return new Date(0);
+                            const norm = dStr.includes(' ') && !dStr.includes('T') ? dStr.replace(' ', 'T') : dStr;
+                            return new Date(norm);
+                          };
+                          const expDate = parseDate(exam.token_expires_at!);
+                          const isExpired = exam.token_expires_at ? new Date() > expDate : false;
                           return (
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5">
@@ -248,7 +254,7 @@ export default function AdminExamListClient({ initialExams, token }: { initialEx
                               </div>
                               <span className={`text-[10px] ${isExpired ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
                                 {isExpired ? 'Kadaluarsa: ' : 'Exp: '} 
-                                {new Date(exam.token_expires_at!).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
+                                {expDate.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
                               </span>
                               {isExpired && (
                                 <button 

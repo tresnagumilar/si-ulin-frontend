@@ -25,6 +25,7 @@ export default function PengaturanGuruPage() {
 
   // Profile State
   const [profile, setProfile] = useState({ name: '', subject: '', nuptk: '', email: '' });
+  const [originalProfile, setOriginalProfile] = useState({ name: '', subject: '', nuptk: '', email: '' });
 
   // Password State
   const [passwords, setPasswords] = useState({ old_password: '', new_password: '', new_password_confirmation: '' });
@@ -37,17 +38,33 @@ export default function PengaturanGuruPage() {
     })
       .then(res => res.json())
       .then(u => {
-        setProfile({ name: u.name || '', subject: u.subject || '', nuptk: u.nuptk || '', email: u.email || '' });
+        const loaded = { name: u.name || '', subject: u.subject || '', nuptk: u.nuptk || '', email: u.email || '' };
+        setProfile(loaded);
+        setOriginalProfile(loaded);
       })
       .catch(() => {
         if (user) {
-          setProfile({ name: user.name || '', subject: user.subject || '', nuptk: user.nuptk || '', email: user.email || '' });
+          const loaded = { name: user.name || '', subject: user.subject || '', nuptk: user.nuptk || '', email: user.email || '' };
+          setProfile(loaded);
+          setOriginalProfile(loaded);
         }
       });
   }, [token]);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (
+      profile.name === originalProfile.name &&
+      profile.subject === originalProfile.subject &&
+      profile.nuptk === originalProfile.nuptk &&
+      profile.email === originalProfile.email
+    ) {
+      setMessage({ type: 'error', text: 'Tidak ada perubahan data profil yang dirubah.' });
+      showAlert('Tidak ada perubahan data pada profil Anda.', 'Tidak Ada Perubahan', 'info');
+      return;
+    }
+
     setIsLoading(true);
     setMessage({ type: '', text: '' });
 
@@ -63,6 +80,7 @@ export default function PengaturanGuruPage() {
       const data = await res.json();
 
       if (res.ok) {
+        setOriginalProfile({ ...profile });
         setMessage({ type: 'success', text: 'Profil berhasil diperbarui!' });
         showAlert('Profil Anda telah berhasil diperbarui dan disimpan!', 'Berhasil Simpan', 'success');
         await update({ name: profile.name, subject: profile.subject, nuptk: profile.nuptk, email: profile.email });

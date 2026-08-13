@@ -169,6 +169,13 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const localBlobUrl = URL.createObjectURL(file);
+    if (isEditMode) {
+      setEditQ(prev => ({ ...prev, imageUrl: localBlobUrl }));
+    } else {
+      setNewQ(prev => ({ ...prev, imageUrl: localBlobUrl }));
+    }
+
     setIsUploadingImage(true);
     const formData = new FormData();
     formData.append('file', file);
@@ -187,7 +194,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
           setNewQ(prev => ({ ...prev, imageUrl: data.url }));
         }
       } else {
-        showAlert('Gagal mengunggah gambar', 'Upload Gagal', 'error');
+        showAlert('Gagal mengunggah gambar ke server', 'Upload Gagal', 'error');
       }
     } catch (error) {
       console.error(error);
