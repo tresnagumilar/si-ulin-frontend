@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, Activity, ShieldAlert } from 'lucide-react';
 import QuestionManager from './QuestionManager';
 import { authOptions } from '../../../api/auth/[...nextauth]/route';
+import { API_URL } from '@/lib/api';
 
 export default async function GuruUjianDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -12,7 +13,7 @@ export default async function GuruUjianDetailPage({ params }: { params: Promise<
   if (!session || !session.user) redirect('/');
   if (session.user.role !== 'GURU' && session.user.role !== 'ADMIN') redirect('/dashboard/siswa');
 
-  const res = await fetch(`http://localhost:8000/api/exams/${resolvedParams.id}`, {
+  const res = await fetch(`${API_URL}/api/exams/${resolvedParams.id}`, {
     headers: {
       'Authorization': `Bearer ${session.user.token}`
     },

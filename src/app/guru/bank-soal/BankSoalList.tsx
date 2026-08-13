@@ -4,6 +4,7 @@ import { Plus, FolderOpen, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { API_URL } from '@/lib/api';
 
 export default function BankSoalList({ token }: { token: string }) {
   const [banks, setBanks] = useState<any[]>([]);
@@ -30,7 +31,7 @@ export default function BankSoalList({ token }: { token: string }) {
 
   const fetchBanks = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/question-banks', {
+      const res = await fetch(`${API_URL}/api/question-banks`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -51,7 +52,7 @@ export default function BankSoalList({ token }: { token: string }) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch('http://localhost:8000/api/question-banks', {
+      const res = await fetch(`${API_URL}/api/question-banks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +78,7 @@ export default function BankSoalList({ token }: { token: string }) {
     showConfirm("Apakah Anda yakin ingin menghapus Bank Soal ini beserta seluruh isi soal di dalamnya secara permanen?", async () => {
       setConfirmData({ ...confirmData, isOpen: false });
       try {
-        const res = await fetch(`http://localhost:8000/api/question-banks/${id}`, {
+        const res = await fetch(`${API_URL}/api/question-banks/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });

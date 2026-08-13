@@ -6,6 +6,7 @@ import { getImageUrl } from '@/lib/image';
 
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { API_URL } from '@/lib/api';
 
 type Question = {
   id: string;
@@ -57,7 +58,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
 
   useEffect(() => {
     if (isBankModalOpen && banks.length === 0) {
-      fetch('http://localhost:8000/api/question-banks', {
+      fetch(`${API_URL}/api/question-banks`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => res.json())
@@ -74,7 +75,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
   useEffect(() => {
     if (selectedBank) {
       setIsFetchingBank(true);
-      fetch(`http://localhost:8000/api/question-banks/${selectedBank}`, {
+      fetch(`${API_URL}/api/question-banks/${selectedBank}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => res.json())
@@ -96,7 +97,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
 
     setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/exams/${examId}/import-selected-from-bank`, {
+      const res = await fetch(`${API_URL}/api/exams/${examId}/import-selected-from-bank`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +174,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
     formData.append('file', file);
 
     try {
-      const res = await fetch('http://localhost:8000/api/upload', {
+      const res = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -200,7 +201,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
     e.preventDefault();
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/questions', {
+      const res = await fetch(`${API_URL}/api/questions`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -244,7 +245,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
 
     setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/questions/${editingQ.id}`, {
+      const res = await fetch(`${API_URL}/api/questions/${editingQ.id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -269,7 +270,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
     showConfirm('Apakah Anda yakin ingin menghapus butir soal ini dari ujian?', async () => {
       setConfirmData({ ...confirmData, isOpen: false });
       try {
-        const res = await fetch(`http://localhost:8000/api/questions/${id}`, { 
+        const res = await fetch(`${API_URL}/api/questions/${id}`, { 
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -346,7 +347,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
           return;
         }
 
-        const res = await fetch('http://localhost:8000/api/questions/bulk', {
+        const res = await fetch(`${API_URL}/api/questions/bulk`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',

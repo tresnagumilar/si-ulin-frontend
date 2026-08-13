@@ -4,6 +4,7 @@ import { ArrowLeft, Users, FileSpreadsheet } from 'lucide-react';
 import Link from 'next/link';
 import { authOptions } from '../../../../api/auth/[...nextauth]/route';
 import HasilUjianClient from './HasilUjianClient';
+import { API_URL } from '@/lib/api';
 
 export default async function RekapHasilUjianPage({ params }: { params: Promise<{ id: string }> }) {
   const session = (await getServerSession(authOptions)) as any;
@@ -11,7 +12,7 @@ export default async function RekapHasilUjianPage({ params }: { params: Promise<
 
   const { id } = await params;
 
-  const res = await fetch(`http://127.0.0.1:8000/api/admin/exam/${id}/results`, {
+  const res = await fetch(`${API_URL}/api/admin/exam/${id}/results`, {
     headers: { 'Authorization': `Bearer ${session.user.token}` },
     cache: 'no-store'
   });

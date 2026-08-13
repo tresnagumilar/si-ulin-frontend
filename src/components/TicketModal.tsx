@@ -196,7 +196,7 @@ export default function TicketModal({ isOpen, onClose, ticketId, onStatusChange 
                   {!isMine && showAvatar && (
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 shrink-0 overflow-hidden ${isSystemAdmin ? 'bg-purple-100' : 'bg-blue-100'}`}>
                       {reply.user?.avatar ? (
-                        <img src={`http://localhost:8000/storage/${reply.user.avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                        <img src={getImageUrl(reply.user.avatar)} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
                         <User className={`w-4 h-4 ${isSystemAdmin ? 'text-purple-600' : 'text-primary-blue'}`} />
                       )}

@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { getImageUrl } from '@/lib/image';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { API_URL } from '@/lib/api';
 
 type Question = {
   id: string;
@@ -73,7 +74,7 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
     formData.append('file', file);
 
     try {
-      const res = await fetch('http://localhost:8000/api/upload', {
+      const res = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -99,7 +100,7 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
     e.preventDefault();
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/questions', {
+      const res = await fetch(`${API_URL}/api/questions`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -141,7 +142,7 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
 
     setIsLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/questions/${editingQ.id}`, {
+      const res = await fetch(`${API_URL}/api/questions/${editingQ.id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -166,7 +167,7 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
     showConfirm('Apakah Anda yakin ingin menghapus soal ini dari Bank Soal?', async () => {
       setConfirmData({ ...confirmData, isOpen: false });
       try {
-        const res = await fetch(`http://localhost:8000/api/questions/${id}`, { 
+        const res = await fetch(`${API_URL}/api/questions/${id}`, { 
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -178,7 +179,39 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
       } catch (error) {
         showAlert('Gagal menghapus soal karena kendala jaringan', 'Error', 'error');
       }
-    });
+    }, 'Hapus Soal');
+  };
+
+  const handleBulkImport = async (parsedQuestions: any[]) => {
+    if (parsedQuestions.length === 0) return;
+    setIsLoading(true);
+    try {
+      const formatted = parsedQuestions.map(q => ({
+        content: q.content,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD,
+        optionE: q.optionE || '',
+        answer: (q.answer || 'A').toUpperCase(),
+        imageUrl: q.imageUrl || ''
+      }));
+
+      const res = await fetch(`${API_URL}/api/question-banks/${bankId}/questions`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ questions: formatted })
+      });
+      
+      // ... rest of implementation
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Smart answer key extractor
@@ -247,7 +280,7 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
           return;
         }
 
-        const res = await fetch(`http://localhost:8000/api/question-banks/${bankId}/questions`, {
+        const res = await fetch(`${API_URL}/api/question-banks/${bankId}/questions`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',

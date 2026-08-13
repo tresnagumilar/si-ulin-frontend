@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, AlertTriangle, BookOpen, CheckCircle2, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { API_URL } from '@/lib/api';
 
 interface NotificationItem {
   id: string;
@@ -26,7 +27,7 @@ export default function NotificationBadge() {
 
     const fetchNotifications = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/notifications', {
+        const res = await fetch(`${API_URL}/api/notifications`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { API_URL } from '@/lib/api';
 
 type ExamData = {
   id: string;
@@ -44,7 +45,7 @@ export default function AdminExamListClient({ initialExams, token }: { initialEx
 
   const toggleLive = async (id: string, currentStatus: boolean) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/exams/${id}/live`, {
+      const res = await fetch(`${API_URL}/api/exams/${id}/live`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -62,7 +63,7 @@ export default function AdminExamListClient({ initialExams, token }: { initialEx
 
   const handleGenerateToken = async (id: string) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/exams/${id}/generate-token`, {
+      const res = await fetch(`${API_URL}/api/exams/${id}/generate-token`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -82,7 +83,7 @@ export default function AdminExamListClient({ initialExams, token }: { initialEx
     showConfirm('Apakah Anda yakin ingin menghapus ujian ini secara permanen? Semua data soal dan nilai siswa terkait akan ikut terhapus.', async () => {
       setConfirmData({ ...confirmData, isOpen: false });
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/exams/${id}`, { 
+        const res = await fetch(`${API_URL}/api/exams/${id}`, { 
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -100,7 +101,7 @@ export default function AdminExamListClient({ initialExams, token }: { initialEx
 
   const handleExport = async (examId: string, examTitle: string) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/admin/exam/${examId}/results`, {
+      const res = await fetch(`${API_URL}/api/admin/exam/${examId}/results`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Gagal mengambil data nilai');

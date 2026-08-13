@@ -4,6 +4,7 @@ import { authOptions } from '../../../../api/auth/[...nextauth]/route';
 import LiveMonitorClient from './LiveMonitorClient';
 import Link from 'next/link';
 import { ArrowLeft, Activity } from 'lucide-react';
+import { API_URL } from '@/lib/api';
 
 export default async function LiveMonitorPage({ params }: { params: Promise<{ id: string }> }) {
   const session = (await getServerSession(authOptions)) as any;
@@ -16,7 +17,7 @@ export default async function LiveMonitorPage({ params }: { params: Promise<{ id
   const { id } = await params;
 
   // Fetch Exam data
-  const res = await fetch(`http://127.0.0.1:8000/api/exams/${id}`, {
+  const res = await fetch(`${API_URL}/api/exams/${id}`, {
     headers: { 'Authorization': `Bearer ${token}` },
     cache: 'no-store'
   });

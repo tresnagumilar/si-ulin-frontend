@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, User, Check, CheckCheck, Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { API_URL } from '@/lib/api';
+import { getImageUrl } from '@/lib/image';
 
 interface Comment {
   id: number;
@@ -48,7 +50,7 @@ export default function ChatModal({ isOpen, onClose, attemptId, title }: ChatMod
   const fetchComments = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/attempts/${attemptId}/comments`, {
+      const res = await fetch(`${API_URL}/api/attempts/${attemptId}/comments`, {
         headers: {
           'Authorization': `Bearer ${session?.user?.token}`
         }
@@ -69,7 +71,7 @@ export default function ChatModal({ isOpen, onClose, attemptId, title }: ChatMod
 
     setSending(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/attempts/${attemptId}/comments`, {
+      const res = await fetch(`${API_URL}/api/attempts/${attemptId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +144,7 @@ export default function ChatModal({ isOpen, onClose, attemptId, title }: ChatMod
                   {!isMine && showAvatar && (
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2 shrink-0 overflow-hidden">
                       {comment.user?.avatar ? (
-                        <img src={`http://localhost:8000/storage/${comment.user.avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                        <img src={getImageUrl(comment.user.avatar)} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
                         <User className="w-4 h-4 text-primary-blue" />
                       )}

@@ -4,6 +4,7 @@ import { authOptions } from '../../../api/auth/[...nextauth]/route';
 import BankSoalDetail from './BankSoalDetail';
 import Link from 'next/link';
 import { ArrowLeft, Database } from 'lucide-react';
+import { API_URL } from '@/lib/api';
 
 export default async function DetailBankSoalPage({ params }: { params: Promise<{ id: string }> }) {
   const session = (await getServerSession(authOptions)) as any;
@@ -13,7 +14,7 @@ export default async function DetailBankSoalPage({ params }: { params: Promise<{
   const { id } = await params;
 
   // Fetch Bank Soal data
-  const res = await fetch(`http://127.0.0.1:8000/api/question-banks/${id}`, {
+  const res = await fetch(`${API_URL}/api/question-banks/${id}`, {
     headers: { 'Authorization': `Bearer ${token}` },
     cache: 'no-store'
   });

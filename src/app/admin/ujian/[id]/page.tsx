@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import QuestionManager from '../../../guru/ujian/[id]/QuestionManager';
 import { authOptions } from '../../../api/auth/[...nextauth]/route';
+import { API_URL } from '@/lib/api';
 
 export default async function AdminUjianDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -11,7 +12,7 @@ export default async function AdminUjianDetailPage({ params }: { params: Promise
   
   if (!session || !session.user || session.user.role !== 'ADMIN') redirect('/');
 
-  const res = await fetch(`http://localhost:8000/api/exams/${resolvedParams.id}`, {
+  const res = await fetch(`${API_URL}/api/exams/${resolvedParams.id}`, {
     headers: {
       'Authorization': `Bearer ${session.user.token}`
     },

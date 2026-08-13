@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Users, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import useSWR from 'swr';
+import { API_URL } from '@/lib/api';
 
 type Participant = {
   id: string;
@@ -12,21 +13,17 @@ type Participant = {
   };
   startedAt: string;
   answersCount: number;
-  totalQuestions: number;
-  isWarning: boolean;
+  totalQuestions?: number;
+  isWarning?: boolean;
   cheatCount: number;
+  lastActive: string;
 };
 
 type LiveStats = {
   totalActive: number;
   totalFinished: number;
   participants: Participant[];
-  recentCheats: {
-    id: string;
-    time: string;
-    student_name: string;
-    description: string;
-  }[];
+  recentCheats?: any[];
 };
 
 export default function LiveMonitorClient({ examId, token }: { examId: string, token: string }) {
@@ -36,7 +33,7 @@ export default function LiveMonitorClient({ examId, token }: { examId: string, t
   }).then(res => res.json());
 
   const { data, error, isLoading } = useSWR<LiveStats>(
-    `http://127.0.0.1:8000/api/exams/${examId}/live-stats`, 
+    `${API_URL}/api/exams/${examId}/live-stats`, 
     fetcher, 
     { refreshInterval: 5000 }
   );
@@ -82,7 +79,7 @@ export default function LiveMonitorClient({ examId, token }: { examId: string, t
           </div>
           <div>
             <p className="text-sm font-bold text-red-500 uppercase tracking-wider">Kecurangan (Total)</p>
-            <h3 className="text-3xl font-black text-red-700">{stats.recentCheats.length}</h3>
+            <h3 className="text-3xl font-black text-red-700">{stats.recentCheats?.length || 0}</h3>
           </div>
         </div>
       </div>
@@ -111,7 +108,7 @@ export default function LiveMonitorClient({ examId, token }: { examId: string, t
                   </tr>
                 ) : (
                   stats.participants.map(p => {
-                    const progress = p.totalQuestions > 0 ? Math.round((p.answersCount / p.totalQuestions) * 100) : 0;
+                    const progress = (p.totalQuestions && p.totalQuestions > 0) ? Math.round((p.answersCount / p.totalQuestions) * 100) : 0;
                     return (
                       <tr key={p.id} className={`border-b border-gray-50 ${p.isWarning ? 'bg-red-50/50' : ''}`}>
                         <td className="py-4">
@@ -169,7 +166,7 @@ export default function LiveMonitorClient({ examId, token }: { examId: string, t
           </h3>
           
           <div className="flex-1 overflow-y-auto pr-2 space-y-4">
-            {stats.recentCheats.length === 0 ? (
+            {!stats.recentCheats || stats.recentCheats.length === 0 ? (
               <div className="h-full flex items-center justify-center text-gray-400 text-sm">
                 Belum ada aktivitas mencurigakan.
               </div>

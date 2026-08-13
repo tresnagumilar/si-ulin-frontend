@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Search, Trash2, User, UserCheck, Key, X, Lock, Unlock, Pencil } from 'lucide-react';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { API_URL } from '@/lib/api';
 
 export default function DataSiswaClient({ token }: { token: string }) {
   const [users, setUsers] = useState<any[]>([]);
@@ -43,7 +44,7 @@ export default function DataSiswaClient({ token }: { token: string }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/admin/users', {
+      const res = await fetch(`${API_URL}/api/admin/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -65,7 +66,7 @@ export default function DataSiswaClient({ token }: { token: string }) {
     showConfirm('Apakah Anda yakin ingin menghapus pengguna ini secara permanen?', async () => {
       setConfirmData({ ...confirmData, isOpen: false });
       try {
-        const res = await fetch(`http://localhost:8000/api/admin/users/${id}`, {
+        const res = await fetch(`${API_URL}/api/admin/users/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -84,7 +85,7 @@ export default function DataSiswaClient({ token }: { token: string }) {
 
   const handleToggleQuestionAccess = async (teacherId: number) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/teachers/${teacherId}/toggle-question-access`, {
+      const res = await fetch(`${API_URL}/api/admin/teachers/${teacherId}/toggle-question-access`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -107,7 +108,7 @@ export default function DataSiswaClient({ token }: { token: string }) {
     }
     
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/users/${selectedUserForPassword.id}/password`, {
+      const res = await fetch(`${API_URL}/api/admin/users/${selectedUserForPassword.id}/password`, {
         method: 'PUT',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -147,7 +148,7 @@ export default function DataSiswaClient({ token }: { token: string }) {
     if (!selectedUserForEdit) return;
 
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/users/${selectedUserForEdit.id}`, {
+      const res = await fetch(`${API_URL}/api/admin/users/${selectedUserForEdit.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

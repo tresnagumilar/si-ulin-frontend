@@ -7,21 +7,16 @@ import ChatModal from '@/components/ChatModal';
 import { getImageUrl } from '@/lib/image';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { API_URL } from '@/lib/api';
 
-export default function HasilUjianClient({ exam, initialAttempts }: { exam: any, initialAttempts: any[] }) {
+export default function HasilUjianClient({ exam, initialAttempts }: { exam: any; initialAttempts: any[] }) {
   const { data: session } = useSession();
   const token = (session?.user as any)?.token;
   
   const [activeTab, setActiveTab] = useState<'hasil' | 'analisis' | 'log'>('hasil');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedKelas, setSelectedKelas] = useState('Semua Kelas');
-  const [analisis, setAnalisis] = useState<any>(null);
-  const [loadingAnalisis, setLoadingAnalisis] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [selectedAttempt, setSelectedAttempt] = useState<{id: string, name: string} | null>(null);
-  const [selectedCheatLog, setSelectedCheatLog] = useState<any[] | null>(null);
-  const [selectedCheatStudent, setSelectedCheatStudent] = useState<string>('');
-
+  const [selectedKelas, setSelectedKelas] = useState('ALL');
+  
   // Custom Alert & Confirm Modals
   const [alertData, setAlertData] = useState<{ isOpen: boolean; title?: string; message: string; type?: 'error' | 'warning' | 'info' | 'success' }>({
     isOpen: false, message: ''
@@ -34,11 +29,23 @@ export default function HasilUjianClient({ exam, initialAttempts }: { exam: any,
     setAlertData({ isOpen: true, title, message, type });
   };
 
-  const showConfirm = (message: string, onConfirm: () => void, title = 'Konfirmasi Aksi') => {
+  const showConfirm = (message: string, onConfirm: () => void, title = 'Konfirmasi Action') => {
     setConfirmData({ isOpen: true, title, message, onConfirm });
   };
 
-  // Essay Grading Modal state
+  // State untuk Analisis & Log
+  const [analisis, setAnalisis] = useState<any>(null);
+  const [loadingAnalisis, setLoadingAnalisis] = useState(false);
+
+  // Chat modal state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [selectedAttempt, setSelectedAttempt] = useState<{ id: string; name: string } | null>(null);
+
+  // Cheat Log modal state
+  const [selectedCheatLog, setSelectedCheatLog] = useState<any[] | null>(null);
+  const [selectedCheatStudent, setSelectedCheatStudent] = useState<string>('');
+
+  // Essay grading modal state
   const [essayModalOpen, setEssayModalOpen] = useState(false);
   const [gradingAttempt, setGradingAttempt] = useState<any>(null);
   const [essayGrades, setEssayGrades] = useState<{ [qId: string]: number }>({});
@@ -52,14 +59,14 @@ export default function HasilUjianClient({ exam, initialAttempts }: { exam: any,
   // Extract unique classes
   const kelasOptions = useMemo(() => {
     const classes = new Set(initialAttempts.map(a => a.user?.kelas).filter(Boolean));
-    return ['Semua Kelas', ...Array.from(classes)].sort();
+    return ['ALL', ...Array.from(classes)].sort();
   }, [initialAttempts]);
 
-  // Filter logic
+  // Filtered attempts
   const filteredAttempts = useMemo(() => {
-    return initialAttempts.filter(attempt => {
-      const matchName = attempt.user?.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchKelas = selectedKelas === 'Semua Kelas' || attempt.user?.kelas === selectedKelas;
+    return initialAttempts.filter((a: any) => {
+      const matchName = a.user?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchKelas = selectedKelas === 'ALL' || a.user?.kelas === selectedKelas;
       return matchName && matchKelas;
     });
   }, [initialAttempts, searchTerm, selectedKelas]);
@@ -69,7 +76,7 @@ export default function HasilUjianClient({ exam, initialAttempts }: { exam: any,
     if (analisis || !token) return;
     setLoadingAnalisis(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/exams/${exam.id}/item-analysis`, {
+      const res = await fetch(`${API_URL}/api/exams/${exam.id}/item-analysis`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -95,7 +102,7 @@ export default function HasilUjianClient({ exam, initialAttempts }: { exam: any,
     showConfirm('Apakah Anda yakin ingin membatalkan submit ujian siswa ini? Mereka dapat melanjutkan sisa waktunya.', async () => {
       setConfirmData({ ...confirmData, isOpen: false });
       try {
-        const res = await fetch(`http://localhost:8000/api/admin/attempts/${attemptId}/unsubmit`, {
+        const res = await fetch(`${API_URL}/api/admin/attempts/${attemptId}/unsubmit`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -139,7 +146,7 @@ export default function HasilUjianClient({ exam, initialAttempts }: { exam: any,
     }));
 
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/attempts/${gradingAttempt.id}/grade-essay`, {
+      const res = await fetch(`${API_URL}/api/admin/attempts/${gradingAttempt.id}/grade-essay`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -793,6 +800,15 @@ export default function HasilUjianClient({ exam, initialAttempts }: { exam: any,
           onClose={() => setChatOpen(false)}
           attemptId={selectedAttempt.id}
           title={`Diskusi Ujian: ${selectedAttempt.name}`}
+        />
+      )}
+
+      {selectedAttempt && (
+        <ChatModal
+          isOpen={chatOpen}
+          onClose={() => { setChatOpen(false); setSelectedAttempt(null); }}
+          attemptId={selectedAttempt.id}
+          title={`Diskusi dengan ${selectedAttempt.name}`}
         />
       )}
 

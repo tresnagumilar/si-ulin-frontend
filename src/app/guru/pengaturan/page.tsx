@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Settings, User, Lock, Save, Loader2, CheckCircle2 } from 'lucide-react';
+import AlertModal from '@/components/AlertModal';
 import { API_URL } from '@/lib/api';
 
 export default function PengaturanGuruPage() {
@@ -12,6 +13,15 @@ export default function PengaturanGuruPage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Custom Alert Modal State
+  const [alertData, setAlertData] = useState<{ isOpen: boolean; title?: string; message: string; type?: 'error' | 'warning' | 'info' | 'success' }>({
+    isOpen: false, message: ''
+  });
+
+  const showAlert = (message: string, title = 'Pemberitahuan', type: 'error' | 'warning' | 'info' | 'success' = 'info') => {
+    setAlertData({ isOpen: true, title, message, type });
+  };
 
   // Profile State
   const [profile, setProfile] = useState({ name: '', subject: '', nuptk: '', email: '' });
@@ -54,12 +64,15 @@ export default function PengaturanGuruPage() {
 
       if (res.ok) {
         setMessage({ type: 'success', text: 'Profil berhasil diperbarui!' });
+        showAlert('Profil Anda telah berhasil diperbarui dan disimpan!', 'Berhasil Simpan', 'success');
         await update({ name: profile.name, subject: profile.subject, nuptk: profile.nuptk, email: profile.email });
       } else {
         setMessage({ type: 'error', text: data.message || 'Gagal memperbarui profil' });
+        showAlert(data.message || 'Gagal memperbarui profil Anda.', 'Gagal Simpan', 'error');
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Terjadi kesalahan jaringan' });
+      showAlert('Terjadi kesalahan jaringan saat menyimpan profil.', 'Kesalahan Koneksi', 'error');
     }
     setIsLoading(false);
   };
@@ -71,6 +84,7 @@ export default function PengaturanGuruPage() {
 
     if (passwords.new_password !== passwords.new_password_confirmation) {
       setMessage({ type: 'error', text: 'Konfirmasi password baru tidak cocok!' });
+      showAlert('Konfirmasi password baru tidak cocok!', 'Peringatan', 'warning');
       setIsLoading(false);
       return;
     }
@@ -88,12 +102,15 @@ export default function PengaturanGuruPage() {
 
       if (res.ok) {
         setMessage({ type: 'success', text: 'Password berhasil diubah!' });
+        showAlert('Password Anda telah berhasil diubah!', 'Berhasil', 'success');
         setPasswords({ old_password: '', new_password: '', new_password_confirmation: '' });
       } else {
         setMessage({ type: 'error', text: data.message || 'Gagal mengubah password' });
+        showAlert(data.message || 'Gagal mengubah password Anda.', 'Gagal', 'error');
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Terjadi kesalahan jaringan' });
+      showAlert('Terjadi kesalahan jaringan saat mengubah password.', 'Kesalahan Koneksi', 'error');
     }
     setIsLoading(false);
   };
@@ -250,6 +267,14 @@ export default function PengaturanGuruPage() {
 
         </div>
       </div>
+
+      <AlertModal 
+        isOpen={alertData.isOpen}
+        title={alertData.title}
+        message={alertData.message}
+        type={alertData.type}
+        onClose={() => setAlertData({ ...alertData, isOpen: false })}
+      />
     </div>
   );
 }

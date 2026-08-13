@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { API_URL } from '@/lib/api';
 
 export default function TicketNotificationBadge() {
   const { data: session } = useSession();
@@ -14,7 +15,7 @@ export default function TicketNotificationBadge() {
 
     const fetchNotifications = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/ticket-notifications', {
+        const res = await fetch(`${API_URL}/api/ticket-notifications`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

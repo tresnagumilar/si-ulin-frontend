@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import ExamClient from './ExamClient';
 import { authOptions } from '../../api/auth/[...nextauth]/route';
+import { API_URL } from '@/lib/api';
 
 export default async function UjianPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -12,7 +13,7 @@ export default async function UjianPage({ params }: { params: Promise<{ id: stri
   }
 
   // Find Exam
-  const res = await fetch(`http://localhost:8000/api/exams/${resolvedParams.id}`, {
+  const res = await fetch(`${API_URL}/api/exams/${resolvedParams.id}`, {
     headers: {
       'Authorization': `Bearer ${session.user.token}`
     },

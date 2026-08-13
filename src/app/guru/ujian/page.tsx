@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Plus, Settings, Eye, Trash2 } from 'lucide-react';
 import AdminExamListClient from './AdminExamListClient';
 import { authOptions } from '../../api/auth/[...nextauth]/route';
+import { API_URL } from '@/lib/api';
 
 export default async function GuruUjianPage() {
   const session = (await getServerSession(authOptions)) as any;
@@ -11,7 +12,7 @@ export default async function GuruUjianPage() {
 
   if (!session || !session.user || session.user.role !== 'GURU') redirect('/');
 
-  const res = await fetch('http://127.0.0.1:8000/api/exams', {
+  const res = await fetch(`${API_URL}/api/exams`, {
     headers: {
       'Authorization': `Bearer ${session.user.token}`,
     },
