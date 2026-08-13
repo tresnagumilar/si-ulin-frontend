@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Mail, Lock, User, Key } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Key, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { signIn, useSession } from "next-auth/react";
 
@@ -12,6 +12,7 @@ export default function LoginPageClient() {
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     // Show error from URL if exists
@@ -58,6 +59,7 @@ export default function LoginPageClient() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setFormError(null);
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
@@ -81,7 +83,7 @@ export default function LoginPageClient() {
         });
         const regData = await regRes.json();
         if (!regRes.ok) {
-          alert(regData.message || 'Gagal mendaftar');
+          setFormError(regData.message || 'Gagal mendaftar');
           setLoading(false);
           return;
         }
@@ -94,11 +96,11 @@ export default function LoginPageClient() {
         });
 
         if ((result as any)?.error) {
-          alert((result as any).error);
+          setFormError('Pendaftaran berhasil. Silakan masuk menggunakan akun baru Anda.');
           setIsLogin(true);
         }
       } catch (err) {
-        alert('Terjadi kesalahan saat mendaftar');
+        setFormError('Terjadi kesalahan jaringan saat mendaftar.');
       }
       setLoading(false);
       return;
@@ -111,7 +113,11 @@ export default function LoginPageClient() {
     });
 
     if ((result as any)?.error) {
-      alert((result as any).error);
+      const authErr = (result as any).error;
+      const displayMsg = authErr.includes('HTML') || authErr.includes('unreachable') 
+        ? authErr 
+        : 'Email / NIS / NUPTK atau Password yang Anda masukkan tidak sesuai dengan data terdaftar. Silakan periksa kembali.';
+      setFormError(displayMsg);
       setLoading(false);
     }
   };
@@ -148,8 +154,18 @@ export default function LoginPageClient() {
         <div className="glass-card w-full rounded-[2rem] p-8 shadow-2xl relative">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-1">{isLogin ? 'Selamat Datang 👋' : 'Buat Akun Baru ✨'}</h2>
-            <p className="text-gray-500 text-sm">{isLogin ? 'Masuk untuk melanjutkan' : 'Daftar untuk mulai menggunakan aplikasi'}</p>
+            <p className="text-sm text-gray-500">{isLogin ? 'Silakan masuk ke akun Anda' : 'Lengkapi data untuk mendaftar'}</p>
           </div>
+
+          {formError && (
+            <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div className="text-xs font-semibold leading-relaxed">
+                <p className="font-bold text-sm text-red-800 mb-0.5">Gagal Masuk</p>
+                {formError}
+              </div>
+            </div>
+          )}
 
           {/* Role Tabs */}
           <div className="flex bg-gray-100/80 backdrop-blur-sm rounded-full p-1 mb-8 shadow-inner">
@@ -157,7 +173,7 @@ export default function LoginPageClient() {
               <button
                 key={r}
                 type="button"
-                onClick={() => setRole(r)}
+                onClick={() => { setRole(r); setFormError(null); }}
                 className={`flex-1 py-2.5 px-4 rounded-full text-sm font-semibold transition-all duration-300 ${role === r
                     ? 'bg-accent-yellow text-primary-blue-dark shadow-md transform scale-[1.02]'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
@@ -260,7 +276,7 @@ export default function LoginPageClient() {
           <div className="mt-6 flex flex-col items-center gap-3">
             <button
               type="button"
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => { setIsLogin(!isLogin); setFormError(null); }}
               className="text-sm text-primary-blue hover:text-primary-blue-light font-medium transition-colors"
             >
               {isLogin ? 'Belum punya akun? Daftar sekarang' : 'Sudah punya akun? Masuk di sini'}
