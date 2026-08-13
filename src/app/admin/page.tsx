@@ -6,7 +6,7 @@ import OnlineUsersWidget from '@/components/OnlineUsersWidget';
 import { authOptions } from '../api/auth/[...nextauth]/route';
 
 export default async function AdminDashboard() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   
   if (!session || !session.user) redirect('/');
   if (session.user.role !== 'ADMIN') redirect('/dashboard/siswa');

@@ -3,12 +3,13 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '../../../api/auth/[...nextauth]/route';
+import { API_URL } from '@/lib/api';
 
 export default async function UjianSayaPage() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   if (!session || !session.user) redirect('/');
 
-  const res = await fetch('http://127.0.0.1:8000/api/student/exams', {
+  const res = await fetch(`${API_URL}/api/student/exams`, {
     headers: {
       'Authorization': `Bearer ${session.user.token}`
     },

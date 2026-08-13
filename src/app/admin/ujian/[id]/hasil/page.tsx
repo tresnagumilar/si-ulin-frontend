@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { authOptions } from '../../../../api/auth/[...nextauth]/route';
 import HasilUjianClient from '../../../../guru/ujian/[id]/hasil/HasilUjianClient';
 
-export default async function AdminRekapHasilUjianPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
+export default async function AdminHasilUjianPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = (await getServerSession(authOptions)) as any;
   if (!session || !session.user || session.user.role !== 'ADMIN') redirect('/');
 
   const { id } = await params;

@@ -3,20 +3,24 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Users, ChevronDown, ChevronUp, User } from 'lucide-react';
+import { API_URL } from '@/lib/api';
 
 export default function OnlineUsersWidget() {
   const { data: session } = useSession();
+  const user = session?.user as any;
+  const userRole = user?.role;
+
   const [onlineUsers, setOnlineUsers] = useState<{ ADMIN: any[], GURU: any[], SISWA: any[] }>({ ADMIN: [], GURU: [], SISWA: [] });
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!session?.user) return;
-    const token = (session.user as any).token;
+    if (!session?.user || userRole !== 'ADMIN') return;
+    const token = user?.token;
 
     const fetchOnlineUsers = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/online-users', {
+        const res = await fetch(`${API_URL}/api/online-users`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -34,7 +38,10 @@ export default function OnlineUsersWidget() {
     fetchOnlineUsers();
     const interval = setInterval(fetchOnlineUsers, 30000);
     return () => clearInterval(interval);
-  }, [session]);
+  }, [session, userRole, user?.token]);
+
+  // Only Admin can see this widget!
+  if (!session?.user || userRole !== 'ADMIN') return null;
 
   const totalOnline = (onlineUsers.ADMIN?.length || 0) + (onlineUsers.GURU?.length || 0) + (onlineUsers.SISWA?.length || 0);
 

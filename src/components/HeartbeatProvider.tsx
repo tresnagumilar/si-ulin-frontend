@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { API_URL } from '@/lib/api';
 
 export default function HeartbeatProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -13,7 +14,7 @@ export default function HeartbeatProvider({ children }: { children: React.ReactN
     
     const sendHeartbeat = async () => {
       try {
-        await fetch('http://localhost:8000/api/heartbeat', {
+        await fetch(`${API_URL}/api/heartbeat`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

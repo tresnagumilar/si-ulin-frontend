@@ -2,15 +2,16 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { Users, GraduationCap } from 'lucide-react';
 import { authOptions } from '../../api/auth/[...nextauth]/route';
+import { API_URL } from '@/lib/api';
 
 export default async function DataSiswaPage() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   
   if (!session || !session.user || (session.user as any).role !== 'GURU') {
     redirect('/');
   }
 
-  const res = await fetch('http://127.0.0.1:8000/api/guru/students', {
+  const res = await fetch(`${API_URL}/api/guru/students`, {
     headers: {
       'Authorization': `Bearer ${(session.user as any).token}`,
     },

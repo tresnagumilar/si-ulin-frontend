@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Plus, HelpCircle, AlertCircle, RefreshCw, MessageSquare } from 'lucide-react';
 import TicketModal from '@/components/TicketModal';
+import { API_URL } from '@/lib/api';
 
 export default function SiswaBantuanPage() {
   const { data: session } = useSession();
@@ -29,7 +30,7 @@ export default function SiswaBantuanPage() {
   const fetchTickets = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/tickets', {
+      const res = await fetch(`${API_URL}/api/tickets`, {
         headers: { 'Authorization': `Bearer ${(session?.user as any)?.token}` }
       });
       if (res.ok) {
@@ -48,7 +49,7 @@ export default function SiswaBantuanPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('http://localhost:8000/api/tickets', {
+      const res = await fetch(`${API_URL}/api/tickets`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

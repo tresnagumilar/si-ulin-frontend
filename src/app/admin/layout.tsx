@@ -28,11 +28,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [status, session, router]);
 
   const menu = [
-    { label: 'Dasbor', icon: LayoutDashboard, href: '/admin' },
-    { label: 'Data Pengguna', icon: Users, href: '/admin/siswa' },
-    { label: 'Data Ujian', icon: FileText, href: '/admin/ujian' },
-    { label: 'Pengaturan Akademik', icon: BookOpen, href: '/admin/akademik' },
-    { label: 'Pengaturan', icon: Settings, href: '/admin/pengaturan' },
+    { label: 'Dasbor', icon: LayoutDashboard, href: '/admin', shortLabel: 'Dasbor' },
+    { label: 'Data Pengguna', icon: Users, href: '/admin/siswa', shortLabel: 'Pengguna' },
+    { label: 'Data Ujian', icon: FileText, href: '/admin/ujian', shortLabel: 'Ujian' },
+    { label: 'Pengaturan Akademik', icon: BookOpen, href: '/admin/akademik', shortLabel: 'Akademik' },
+    { label: 'Pengaturan', icon: Settings, href: '/admin/pengaturan', shortLabel: 'Pengaturan' },
   ];
 
   if (status === 'loading' || !session || (session.user as any).role !== 'ADMIN') {
@@ -48,7 +48,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         onMouseEnter={() => setIsHovered(true)}
       />
 
-      {/* Desktop Sidebar (Left side, Auto-Hide/Hover/Expand) */}
+      {/* Desktop Sidebar */}
       <aside 
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -102,22 +102,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 h-full overflow-y-auto">
-        <div className="md:hidden bg-white border-b border-gray-200 flex items-center justify-between px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 sticky top-0 z-50">
-           <span className="font-bold text-primary-blue-dark">Admin Panel</span>
+      <main className="flex-1 h-full overflow-y-auto pb-20 md:pb-0">
+        {/* Mobile Top Header */}
+        <div className="md:hidden bg-white border-b border-gray-200 flex items-center justify-between px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 sticky top-0 z-40 shadow-sm">
+           <div className="flex items-center gap-2">
+             {/* eslint-disable-next-line @next/next/no-img-element */}
+             <img src="/logo-smkn9.png" alt="Logo SMKN 9" className="w-6 h-6 object-contain" />
+             <span className="font-bold text-primary-blue-dark">Admin Panel</span>
+           </div>
            <div className="flex items-center gap-2">
              <NotificationBadge />
-             <LogoutButton 
-               className="p-2 text-gray-500 hover:text-red-500 transition-colors"
-               iconClassName="w-5 h-5"
-               showText={false}
-             />
            </div>
         </div>
         
         {children}
       </main>
-      
+
+      {/* Mobile Bottom Navigation Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] z-50 px-2 shadow-lg">
+        {menu.map((item) => {
+          const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center py-1 px-1.5 rounded-lg transition-colors ${
+                isActive ? 'text-primary-blue font-bold' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <item.icon className="w-5 h-5 mb-1" />
+              <span className="text-[10px] whitespace-nowrap">{item.shortLabel || item.label.split(' ')[0]}</span>
+            </Link>
+          );
+        })}
+        <LogoutButton 
+          className="flex flex-col items-center py-1 px-1.5 text-gray-400 hover:text-red-500 transition-colors"
+          iconClassName="w-5 h-5 mb-1"
+          showText={false}
+        />
+      </div>
+
     </div>
   );
 }

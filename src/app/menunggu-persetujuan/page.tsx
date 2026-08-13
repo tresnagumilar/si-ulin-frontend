@@ -4,6 +4,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { Clock, ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 export default function MenungguPersetujuanPage() {
   const { data: session, status, update } = useSession();
@@ -16,7 +17,7 @@ export default function MenungguPersetujuanPage() {
 
       const checkStatus = async () => {
         try {
-          const res = await fetch('http://localhost:8000/api/me', {
+          const res = await fetch(`${API_URL}/api/me`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Accept': 'application/json'

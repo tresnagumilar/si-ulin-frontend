@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Activity } from 'lucide-react';
 
 export default async function AdminLiveMonitorPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   
   if (!session || !session.user || (session.user as any).role !== 'ADMIN') {
     redirect('/');

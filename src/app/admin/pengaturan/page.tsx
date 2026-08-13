@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Settings, User, Lock, Save, Loader2, CheckCircle2, Building2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 export default function PengaturanAdminPage() {
   const { data: session, update, status } = useSession();
@@ -36,7 +37,7 @@ export default function PengaturanAdminPage() {
     setMessage({ type: '', text: '' });
 
     try {
-      const res = await fetch('http://localhost:8000/api/update-profile', {
+      const res = await fetch(`${API_URL}/api/update-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,7 +71,7 @@ export default function PengaturanAdminPage() {
     }
 
     try {
-      const res = await fetch('http://localhost:8000/api/change-password', {
+      const res = await fetch(`${API_URL}/api/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

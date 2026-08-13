@@ -5,7 +5,7 @@ import BankSoalList from './BankSoalList';
 import { Database } from 'lucide-react';
 
 export default async function BankSoalPage() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   
   if (!session || !session.user || (session.user as any).role !== 'GURU') {
     redirect('/');

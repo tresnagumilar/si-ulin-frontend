@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '../../api/auth/[...nextauth]/route';
 import DataSiswaClient from './DataSiswaClient';
 
-export default async function DataSiswaPage() {
-  const session = await getServerSession(authOptions);
+export default async function DataSiswaAdminPage() {
+  const session = (await getServerSession(authOptions)) as any;
   
   if (!session || !session.user) redirect('/');
   if (session.user.role !== 'ADMIN') redirect('/dashboard/siswa');

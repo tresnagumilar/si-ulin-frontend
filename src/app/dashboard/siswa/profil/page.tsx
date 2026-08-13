@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { User, Calendar, Save, CheckCircle2, AlertCircle, Lock, ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { API_URL } from '@/lib/api';
 
 export default function ProfilSiswaPage() {
   const { data: session, update, status } = useSession();
@@ -28,7 +29,7 @@ export default function ProfilSiswaPage() {
     if (!session?.user?.token) return;
 
     // Fetch latest user profile from backend
-    fetch('http://localhost:8000/api/me', {
+    fetch(`${API_URL}/api/me`, {
       headers: {
         'Authorization': `Bearer ${(session.user as any).token}`
       }
@@ -64,7 +65,7 @@ export default function ProfilSiswaPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:8000/api/update-profile', {
+      const res = await fetch(`${API_URL}/api/update-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +114,7 @@ export default function ProfilSiswaPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:8000/api/change-password', {
+      const res = await fetch(`${API_URL}/api/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -2,13 +2,14 @@ import { FileText, TrendingUp } from 'lucide-react';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '../../../api/auth/[...nextauth]/route';
+import { API_URL } from '@/lib/api';
 import ChatButton from './ChatButton';
 
 export default async function LaporanNilaiPage() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   if (!session || !session.user) redirect('/');
 
-  const res = await fetch('http://127.0.0.1:8000/api/student/dashboard', {
+  const res = await fetch(`${API_URL}/api/student/dashboard`, {
     headers: {
       'Authorization': `Bearer ${session.user.token}`
     },

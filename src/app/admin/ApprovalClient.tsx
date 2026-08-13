@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Check, X, ShieldAlert } from 'lucide-react';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { API_URL } from '@/lib/api';
 
 type PendingUser = {
   id: string;
@@ -43,7 +44,7 @@ export default function ApprovalClient() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/admin/pending-users', {
+      const res = await fetch(`${API_URL}/api/admin/pending-users`, {
         headers: {
           'Authorization': `Bearer ${session?.user?.token}`,
         }
@@ -63,7 +64,7 @@ export default function ApprovalClient() {
     showConfirm('Setujui dan aktifkan akun pendaftar ini?', async () => {
       setConfirmData(prev => ({ ...prev, isOpen: false }));
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/admin/approve-user/${id}`, {
+        const res = await fetch(`${API_URL}/api/admin/approve-user/${id}`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${session?.user?.token}` }
         });
@@ -84,7 +85,7 @@ export default function ApprovalClient() {
     showConfirm('Tolak dan hapus data pendaftaran akun ini?', async () => {
       setConfirmData(prev => ({ ...prev, isOpen: false }));
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/admin/reject-user/${id}`, {
+        const res = await fetch(`${API_URL}/api/admin/reject-user/${id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${session?.user?.token}` }
         });

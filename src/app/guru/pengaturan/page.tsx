@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Settings, User, Lock, Save, Loader2, CheckCircle2 } from 'lucide-react';
+import { API_URL } from '@/lib/api';
 
 export default function PengaturanGuruPage() {
   const { data: session, update } = useSession();
@@ -21,7 +22,7 @@ export default function PengaturanGuruPage() {
   useEffect(() => {
     if (!token) return;
 
-    fetch('http://localhost:8000/api/me', {
+    fetch(`${API_URL}/api/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -41,7 +42,7 @@ export default function PengaturanGuruPage() {
     setMessage({ type: '', text: '' });
 
     try {
-      const res = await fetch('http://localhost:8000/api/update-profile', {
+      const res = await fetch(`${API_URL}/api/update-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +76,7 @@ export default function PengaturanGuruPage() {
     }
 
     try {
-      const res = await fetch('http://localhost:8000/api/change-password', {
+      const res = await fetch(`${API_URL}/api/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

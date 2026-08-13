@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Send, User, Loader2, Info } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { API_URL } from '@/lib/api';
+import { getImageUrl } from '@/lib/image';
 
 interface Ticket {
   id: number;
@@ -61,7 +63,7 @@ export default function TicketModal({ isOpen, onClose, ticketId, onStatusChange 
   const fetchTicket = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/tickets/${ticketId}`, {
+      const res = await fetch(`${API_URL}/api/tickets/${ticketId}`, {
         headers: {
           'Authorization': `Bearer ${(session?.user as any)?.token}`
         }
@@ -82,7 +84,7 @@ export default function TicketModal({ isOpen, onClose, ticketId, onStatusChange 
 
     setSending(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/tickets/${ticketId}/reply`, {
+      const res = await fetch(`${API_URL}/api/tickets/${ticketId}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +110,7 @@ export default function TicketModal({ isOpen, onClose, ticketId, onStatusChange 
   const updateStatus = async (newStatus: string) => {
     if (userRole !== 'ADMIN') return;
     try {
-      const res = await fetch(`http://localhost:8000/api/tickets/${ticketId}/status`, {
+      const res = await fetch(`${API_URL}/api/tickets/${ticketId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

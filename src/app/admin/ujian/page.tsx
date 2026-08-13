@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation';
 import AdminExamListClient from './AdminExamListClient';
 import { authOptions } from '../../api/auth/[...nextauth]/route';
 
-export default async function AdminUjianPage() {
-  const session = await getServerSession(authOptions);
+export default async function AdminExamsPage() {
+  const session = (await getServerSession(authOptions)) as any;
   if (!session || !session.user?.email) redirect('/');
 
   if (!session || !session.user || session.user.role !== 'ADMIN') redirect('/');

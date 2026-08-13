@@ -1,11 +1,10 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { Users, FileText, Activity } from 'lucide-react';
-import OnlineUsersWidget from '@/components/OnlineUsersWidget';
 import { authOptions } from '../api/auth/[...nextauth]/route';
 
-export default async function GuruDashboard() {
-  const session = await getServerSession(authOptions);
+export default async function GuruDashboardPage() {
+  const session = (await getServerSession(authOptions)) as any;
   
   if (!session || !session.user) redirect('/');
   if (session.user.role !== 'GURU') redirect('/dashboard/siswa');
@@ -43,8 +42,6 @@ export default async function GuruDashboard() {
         <h2 className="text-xl font-bold text-gray-800 mb-4">Selamat Datang, {session.user.name}</h2>
         <p className="text-gray-600">Gunakan menu <strong>Kelola Ujian</strong> di samping untuk membuat ujian baru, menambah butir soal manual, atau mempublikasikan (LIVE) ujian kepada para siswa.</p>
       </div>
-
-      <OnlineUsersWidget />
     </div>
   );
 }

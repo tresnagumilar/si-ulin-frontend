@@ -5,8 +5,8 @@ import { Plus, Settings, Eye, Trash2 } from 'lucide-react';
 import AdminExamListClient from './AdminExamListClient';
 import { authOptions } from '../../api/auth/[...nextauth]/route';
 
-export default async function AdminUjianPage() {
-  const session = await getServerSession(authOptions);
+export default async function GuruUjianPage() {
+  const session = (await getServerSession(authOptions)) as any;
   if (!session || !session.user?.email) redirect('/');
 
   if (!session || !session.user || session.user.role !== 'GURU') redirect('/');

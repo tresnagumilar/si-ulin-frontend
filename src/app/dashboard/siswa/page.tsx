@@ -3,15 +3,15 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import PerformanceChart from '@/components/PerformanceChart';
-import OnlineUsersWidget from '@/components/OnlineUsersWidget';
 import CategoryFilterExams from './CategoryFilterExams';
 import { authOptions } from '../../api/auth/[...nextauth]/route';
+import { API_URL } from '@/lib/api';
 
 export default async function SiswaDashboard() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   if (!session || !session.user) redirect('/');
 
-  const res = await fetch('http://127.0.0.1:8000/api/student/dashboard', {
+  const res = await fetch(`${API_URL}/api/student/dashboard`, {
     headers: {
       'Authorization': `Bearer ${session.user.token}`
     },
@@ -139,8 +139,6 @@ export default async function SiswaDashboard() {
           </div>
         </div>
       </div>
-      
-      <OnlineUsersWidget />
     </div>
   );
 }

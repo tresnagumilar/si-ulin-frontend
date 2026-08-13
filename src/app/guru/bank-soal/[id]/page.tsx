@@ -5,8 +5,8 @@ import BankSoalDetail from './BankSoalDetail';
 import Link from 'next/link';
 import { ArrowLeft, Database } from 'lucide-react';
 
-export default async function BankSoalDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
+export default async function DetailBankSoalPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = (await getServerSession(authOptions)) as any;
   if (!session || !session.user || (session.user as any).role !== 'GURU') redirect('/');
   const token = (session.user as any).token;
 

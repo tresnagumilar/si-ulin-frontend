@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { HelpCircle, RefreshCw, MessageSquare, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
 import TicketModal from '@/components/TicketModal';
+import { API_URL } from '@/lib/api';
 
 export default function AdminLaporanPage() {
   const { data: session } = useSession();
@@ -24,7 +25,7 @@ export default function AdminLaporanPage() {
   const fetchTickets = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/tickets', {
+      const res = await fetch(`${API_URL}/api/tickets`, {
         headers: { 'Authorization': `Bearer ${(session?.user as any)?.token}` }
       });
       if (res.ok) {

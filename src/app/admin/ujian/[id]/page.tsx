@@ -7,7 +7,7 @@ import { authOptions } from '../../../api/auth/[...nextauth]/route';
 
 export default async function AdminUjianDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   
   if (!session || !session.user || session.user.role !== 'ADMIN') redirect('/');
 

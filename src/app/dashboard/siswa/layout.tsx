@@ -10,7 +10,7 @@ export default async function SiswaLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
 
   if (!session || !session.user) {
     redirect('/'); // Go back to login if no session

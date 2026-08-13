@@ -5,7 +5,7 @@ import { authOptions } from '../../api/auth/[...nextauth]/route';
 
 export default async function UjianPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   
   if (!session || !session.user) {
     redirect('/');

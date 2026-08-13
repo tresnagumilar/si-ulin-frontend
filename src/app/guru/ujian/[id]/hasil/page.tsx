@@ -6,7 +6,7 @@ import { authOptions } from '../../../../api/auth/[...nextauth]/route';
 import HasilUjianClient from './HasilUjianClient';
 
 export default async function RekapHasilUjianPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as any;
   if (!session || !session.user || (session.user.role !== 'GURU' && session.user.role !== 'ADMIN')) redirect('/');
 
   const { id } = await params;

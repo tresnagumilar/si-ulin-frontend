@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Shield, User, GraduationCap, Calendar, Save } from 'lucide-react';
+import { API_URL } from '@/lib/api';
 
 export default function OnboardingPage() {
   const { data: session, update } = useSession();
@@ -21,7 +22,7 @@ export default function OnboardingPage() {
   const [kelasOptions, setKelasOptions] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/academic/tree')
+    fetch(`${API_URL}/api/academic/tree`)
       .then(res => res.json())
       .then(data => {
         if (data.tingkats) setTingkatOptions(data.tingkats);
@@ -48,7 +49,7 @@ export default function OnboardingPage() {
     const fullKelas = `${tingkat} ${jurusan} ${subKelas}`.trim().replace(/\s+/g, ' ');
 
     try {
-      const res = await fetch('http://localhost:8000/api/onboarding', {
+      const res = await fetch(`${API_URL}/api/onboarding`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

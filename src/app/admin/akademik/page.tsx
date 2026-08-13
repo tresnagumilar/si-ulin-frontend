@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Plus, Trash2, Edit2, BookOpen, Layers, GraduationCap } from 'lucide-react';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { API_URL } from '@/lib/api';
 
 type Tingkat = { id: string; name: string };
 type Jurusan = { id: string; name: string; code?: string };
@@ -50,7 +51,7 @@ export default function PengaturanAkademikPage() {
   const fetchAcademicData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/academic/tree');
+      const res = await fetch(`${API_URL}/api/academic/tree`);
       if (res.ok) {
         const data = await res.json();
         setTingkats(data.tingkats || []);
@@ -102,9 +103,9 @@ export default function PengaturanAkademikPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const endpointMap = {
-      tingkat: 'http://localhost:8000/api/academic/tingkats',
-      jurusan: 'http://localhost:8000/api/academic/jurusans',
-      kelas: 'http://localhost:8000/api/academic/kelases',
+      tingkat: `${API_URL}/api/academic/tingkats`,
+      jurusan: `${API_URL}/api/academic/jurusans`,
+      kelas: `${API_URL}/api/academic/kelases`,
     };
 
     const url = editingId ? `${endpointMap[activeTab]}/${editingId}` : endpointMap[activeTab];
@@ -140,9 +141,9 @@ export default function PengaturanAkademikPage() {
     showConfirm('Apakah Anda yakin ingin menghapus data akademik ini? Tindakan ini tidak dapat dibatalkan.', async () => {
       setConfirmData({ ...confirmData, isOpen: false });
       const endpointMap = {
-        tingkat: `http://localhost:8000/api/academic/tingkats/${id}`,
-        jurusan: `http://localhost:8000/api/academic/jurusans/${id}`,
-        kelas: `http://localhost:8000/api/academic/kelases/${id}`,
+        tingkat: `${API_URL}/api/academic/tingkats/${id}`,
+        jurusan: `${API_URL}/api/academic/jurusans/${id}`,
+        kelas: `${API_URL}/api/academic/kelases/${id}`,
       };
 
       try {

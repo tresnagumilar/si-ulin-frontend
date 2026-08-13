@@ -3,7 +3,11 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { cookies } from "next/headers";
 
+const rawBackendUrl = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_API_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = rawBackendUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+
 export const authOptions: NextAuthOptions = {
+  trustHost: true,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -22,11 +26,20 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
-          const res = await fetch("http://localhost:8000/api/login", {
+          const res = await fetch(`${BACKEND_URL}/api/login`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
             body: JSON.stringify(credentials)
           });
+          
+          const contentType = res.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Backend server (Laravel http://localhost:8000) is unreachable or returned an HTML error page. Ensure Laravel backend is running.");
+          }
+
           const data = await res.json();
           if (res.ok && data.user) {
             return {
@@ -58,15 +71,18 @@ export const authOptions: NextAuthOptions = {
     error: "/"
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account, profile }: any) {
       if (account?.provider === "google") {
         try {
           const cookieStore = await cookies();
           const selectedRole = cookieStore.get('selectedRole')?.value || 'SISWA';
 
-          const res = await fetch("http://localhost:8000/api/auth/google", {
+          const res = await fetch(`${BACKEND_URL}/api/auth/google`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
             body: JSON.stringify({
               google_id: profile?.sub,
               email: user.email,
@@ -74,6 +90,12 @@ export const authOptions: NextAuthOptions = {
               role: selectedRole
             })
           });
+
+          const contentType = res.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Backend server (Laravel http://localhost:8000) is unreachable or returned an HTML error page.");
+          }
+
           const data = await res.json();
           if (!res.ok) {
             throw new Error(data.message || "Akun tidak diizinkan");
@@ -96,7 +118,7 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, trigger, session }: any) {
       if (user) {
         token.role = (user as any).role;
         token.accessToken = (user as any).token;
@@ -125,7 +147,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (token) {
         session.user = {
           ...session.user,

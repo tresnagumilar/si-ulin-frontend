@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useExamStore } from '@/store/examStore';
 import { getImageUrl } from '@/lib/image';
 import AlertModal from '@/components/AlertModal';
+import { API_URL } from '@/lib/api';
 
 interface Question {
   id: string;
@@ -75,7 +76,7 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
         resetExam();
       }
       
-      const res = await fetch('http://127.0.0.1:8000/api/attempts/start', {
+      const res = await fetch(`${API_URL}/api/attempts/start`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -108,7 +109,7 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
       }
       setIsVerifyingToken(true);
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/attempts/verify-token', {
+        const res = await fetch(`${API_URL}/api/attempts/verify-token`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -162,7 +163,7 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
     if (!attemptId) return;
 
     try {
-      await fetch(`http://127.0.0.1:8000/api/attempts/${attemptId}/answer`, {
+      await fetch(`${API_URL}/api/attempts/${attemptId}/answer`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -206,7 +207,7 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
     setIsSubmitting(true);
     
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/attempts/${attemptId}/finish`, {
+      const res = await fetch(`${API_URL}/api/attempts/${attemptId}/finish`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -238,7 +239,7 @@ export default function ExamClient({ exam, questions, token }: ExamClientProps) 
     if (!attemptId || !hasStarted) return;
 
     try {
-      await fetch(`http://127.0.0.1:8000/api/attempts/${attemptId}/cheat`, {
+      await fetch(`${API_URL}/api/attempts/${attemptId}/cheat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
