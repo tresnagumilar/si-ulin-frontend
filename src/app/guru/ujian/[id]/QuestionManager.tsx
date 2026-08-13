@@ -164,17 +164,14 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
   });
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEditMode = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const localBlobUrl = URL.createObjectURL(file);
-    if (isEditMode) {
-      setEditQ(prev => ({ ...prev, imageUrl: localBlobUrl }));
-    } else {
-      setNewQ(prev => ({ ...prev, imageUrl: localBlobUrl }));
-    }
+    setLocalImagePreview(localBlobUrl);
 
     setIsUploadingImage(true);
     const formData = new FormData();
@@ -194,10 +191,12 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
           setNewQ(prev => ({ ...prev, imageUrl: data.url }));
         }
       } else {
+        setLocalImagePreview(null);
         showAlert('Gagal mengunggah gambar ke server', 'Upload Gagal', 'error');
       }
     } catch (error) {
       console.error(error);
+      setLocalImagePreview(null);
       showAlert('Terjadi kesalahan saat mengunggah gambar', 'Error Upload', 'error');
     } finally {
       setIsUploadingImage(false);
@@ -207,6 +206,9 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    const cleanImageUrl = newQ.imageUrl && !newQ.imageUrl.startsWith('blob:') ? newQ.imageUrl : '';
+    const payload = { ...newQ, imageUrl: cleanImageUrl };
+
     try {
       const res = await fetch(`${API_URL}/api/questions`, {
         method: 'POST',
@@ -214,12 +216,13 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(newQ)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const created = await res.json();
         setQuestions([...questions, created]);
         setIsModalOpen(false);
+        setLocalImagePreview(null);
         setNewQ({ examId, type: 'PG', content: '', optionA: '', optionB: '', optionC: '', optionD: '', optionE: '', answer: 'A', essay_answer_key: '', imageUrl: '' });
       } else {
         showAlert('Gagal menambahkan soal baru.', 'Gagal Simpan', 'error');
@@ -251,6 +254,9 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
     if (!editingQ) return;
 
     setIsLoading(true);
+    const cleanImageUrl = editQ.imageUrl && !editQ.imageUrl.startsWith('blob:') ? editQ.imageUrl : '';
+    const payload = { ...editQ, imageUrl: cleanImageUrl };
+
     try {
       const res = await fetch(`${API_URL}/api/questions/${editingQ.id}`, {
         method: 'PUT',
@@ -258,7 +264,7 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(editQ)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
@@ -543,11 +549,11 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Gambar (Opsional)</label>
-                {newQ.imageUrl && (
+                {(localImagePreview || newQ.imageUrl) && (
                   <div className="mb-2 relative w-32 h-32 rounded-lg overflow-hidden border border-gray-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={getImageUrl(newQ.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => setNewQ({...newQ, imageUrl: ''})} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1">
+                    <img src={getImageUrl(localImagePreview || newQ.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => { setLocalImagePreview(null); setNewQ({...newQ, imageUrl: ''}); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -651,11 +657,11 @@ export default function QuestionManager({ examId, initialQuestions, token }: { e
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Gambar (Opsional)</label>
-                {editQ.imageUrl && (
+                {(localImagePreview || editQ.imageUrl) && (
                   <div className="mb-2 relative w-32 h-32 rounded-lg overflow-hidden border border-gray-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={getImageUrl(editQ.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => setEditQ({...editQ, imageUrl: ''})} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1">
+                    <img src={getImageUrl(localImagePreview || editQ.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => { setLocalImagePreview(null); setEditQ({...editQ, imageUrl: ''}); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>

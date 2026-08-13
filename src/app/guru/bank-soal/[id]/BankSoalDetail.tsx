@@ -64,17 +64,14 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
   });
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEditMode = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const localBlobUrl = URL.createObjectURL(file);
-    if (isEditMode) {
-      setEditQ(prev => ({ ...prev, imageUrl: localBlobUrl }));
-    } else {
-      setNewQ(prev => ({ ...prev, imageUrl: localBlobUrl }));
-    }
+    setLocalImagePreview(localBlobUrl);
 
     setIsUploadingImage(true);
     const formData = new FormData();
@@ -94,10 +91,13 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
           setNewQ(prev => ({ ...prev, imageUrl: data.url }));
         }
       } else {
-        alert('Gagal mengunggah gambar');
+        setLocalImagePreview(null);
+        showAlert('Gagal mengunggah gambar ke server', 'Upload Gagal', 'error');
       }
     } catch (error) {
-      alert('Terjadi kesalahan saat mengunggah gambar');
+      console.error(error);
+      setLocalImagePreview(null);
+      showAlert('Terjadi kesalahan saat mengunggah gambar', 'Error Upload', 'error');
     } finally {
       setIsUploadingImage(false);
     }
@@ -106,6 +106,9 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    const cleanImageUrl = newQ.imageUrl && !newQ.imageUrl.startsWith('blob:') ? newQ.imageUrl : '';
+    const payload = { ...newQ, imageUrl: cleanImageUrl, question_bank_id: bankId, examId: null };
+
     try {
       const res = await fetch(`${API_URL}/api/questions`, {
         method: 'POST',
@@ -113,12 +116,13 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ...newQ, question_bank_id: bankId, examId: null })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
         setQuestions([...questions, data]);
         setIsModalOpen(false);
+        setLocalImagePreview(null);
         setNewQ({ question_bank_id: bankId, content: '', optionA: '', optionB: '', optionC: '', optionD: '', optionE: '', answer: 'A', imageUrl: '' });
       } else {
         alert(data.message || data.error || 'Gagal menambahkan soal');
@@ -148,6 +152,9 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
     if (!editingQ) return;
 
     setIsLoading(true);
+    const cleanImageUrl = editQ.imageUrl && !editQ.imageUrl.startsWith('blob:') ? editQ.imageUrl : '';
+    const payload = { ...editQ, imageUrl: cleanImageUrl };
+
     try {
       const res = await fetch(`${API_URL}/api/questions/${editingQ.id}`, {
         method: 'PUT',
@@ -155,7 +162,7 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(editQ)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
@@ -509,11 +516,11 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Gambar (Opsional)</label>
-                {newQ.imageUrl && (
+                {(localImagePreview || newQ.imageUrl) && (
                   <div className="mb-2 relative w-32 h-32 rounded-lg overflow-hidden border border-gray-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={getImageUrl(newQ.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => setNewQ({...newQ, imageUrl: ''})} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1">
+                    <img src={getImageUrl(localImagePreview || newQ.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => { setLocalImagePreview(null); setNewQ({...newQ, imageUrl: ''}); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -591,11 +598,11 @@ export default function BankSoalDetail({ bankId, initialQuestions, token }: { ba
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Gambar (Opsional)</label>
-                {editQ.imageUrl && (
+                {(localImagePreview || editQ.imageUrl) && (
                   <div className="mb-2 relative w-32 h-32 rounded-lg overflow-hidden border border-gray-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={getImageUrl(editQ.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => setEditQ({...editQ, imageUrl: ''})} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1">
+                    <img src={getImageUrl(localImagePreview || editQ.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => { setLocalImagePreview(null); setEditQ({...editQ, imageUrl: ''}); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
